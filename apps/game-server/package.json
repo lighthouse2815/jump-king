@@ -16,6 +16,7 @@
     "@colyseus/ws-transport": "^0.15.0",
     "@jump-king/physics": "workspace:*",
     "@jump-king/protocol": "workspace:*",
+    "@jump-king/maps": "workspace:*",
     "colyseus": "^0.15.0",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.45.4",

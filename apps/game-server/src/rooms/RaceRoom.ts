@@ -138,6 +138,8 @@ export class RaceRoom extends Room<GameState> {
         player.x = body.position.x;
         player.y = body.position.y;
         player.chargeTicks = controller.chargeTicks;
+        const input = this.inputs.get(sessionId);
+        if (input) player.lastProcessedInputSeq = input.seq;
         player.direction = controller.direction;
 
         // Win condition: reach finish platform (y < -250)

@@ -12,6 +12,7 @@
   "dependencies": {
     "@jump-king/physics": "workspace:*",
     "@jump-king/protocol": "workspace:*",
+    "@jump-king/maps": "workspace:*",
     "colyseus.js": "^0.15.0",
     "phaser": "^3.80.1",
     "react": "^18.2.0",

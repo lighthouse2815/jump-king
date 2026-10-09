@@ -47,7 +47,7 @@ export class PhysicsWorld {
     }
   }
 
-  private resolveCollisions(body: Body, staticBodies: Body[], axis: 'x' | 'y'): boolean {
+  public resolveCollisions(body: Body, staticBodies: Body[], axis: 'x' | 'y'): boolean {
     const bodyAABB = body.getAABB();
     let collisionOccurred = false;
 

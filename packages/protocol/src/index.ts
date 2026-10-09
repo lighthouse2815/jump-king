@@ -10,6 +10,7 @@ export class PlayerState extends Schema {
   @type("boolean") isReady: boolean = false;
   @type("boolean") hasFinished: boolean = false;
   @type("number") finishTime: number = 0;
+  @type("number") lastProcessedInputSeq: number = 0;
 }
 
 export class GameState extends Schema {

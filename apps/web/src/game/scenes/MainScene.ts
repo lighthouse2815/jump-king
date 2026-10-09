@@ -21,6 +21,7 @@ export class MainScene extends Phaser.Scene {
   private network!: NetworkManager;
   private accumulator = 0;
   private inputSeq = 0;
+  private pendingInputs: PlayerInputMessage[] = [];
 
   constructor() {
     super({ key: 'MainScene' });
@@ -119,19 +120,55 @@ export class MainScene extends Phaser.Scene {
         seq: this.inputSeq++
       };
 
+      this.pendingInputs.push(input);
       this.network.sendInput(input);
       this.localPlayerController.tick(input);
       this.physicsWorld.tick();
     }
 
-    // Server reconciliation (simplified for now, runs after local ticks)
+    // Client Prediction / Reconciliation
     const serverPlayer = this.network.room.state.players.get(this.network.sessionId);
     if (serverPlayer) {
+      // Remove acknowledged inputs
+      this.pendingInputs = this.pendingInputs.filter(i => i.seq > serverPlayer.lastProcessedInputSeq);
+
+      // Simple positional divergence check to trigger reconciliation
       const dx = Math.abs(serverPlayer.x - this.localPlayerBody.position.x);
       const dy = Math.abs(serverPlayer.y - this.localPlayerBody.position.y);
-      if (dx > 20 || dy > 20) {
+      
+      // If server and client deviate too much, we reconcile
+      // Usually you always snap & replay, but for smoother visuals we snap if diff > threshold
+      // Or we can just always snap and replay. Let's do true reconciliation.
+      if (dx > 1 || dy > 1 || serverPlayer.chargeTicks !== this.localPlayerController.chargeTicks) {
+        // 1. Snap to server state
         this.localPlayerBody.position.x = serverPlayer.x;
         this.localPlayerBody.position.y = serverPlayer.y;
+        this.localPlayerController.chargeTicks = serverPlayer.chargeTicks;
+        this.localPlayerController.direction = serverPlayer.direction as (1 | -1);
+
+        // 2. Replay pending inputs
+        // Note: this effectively fast-forwards physics for the local player
+        // Since we tick physicsWorld, other entities might double-move if not careful,
+        // but since bodies only move if they have velocity, and we only set velocity via input,
+        // it's mostly fine for this single-player simulation world. 
+        // Realistically we should have a separate physics world just for local replay,
+        // or just apply manual integration. We'll use the main world but ONLY integrate our body.
+        for (const pendingInput of this.pendingInputs) {
+           this.localPlayerController.tick(pendingInput);
+           // Manually step our local player body instead of the whole world
+           this.localPlayerBody.velocity.y += this.physicsWorld.gravity * TICK_DT;
+           this.localPlayerBody.isGrounded = false;
+           
+           let collX = false; let collY = false;
+           for (let i = 0; i < 4; i++) {
+             this.localPlayerBody.position.x += this.localPlayerBody.velocity.x * (TICK_DT / 4);
+             if (this.physicsWorld['resolveCollisions'](this.localPlayerBody, this.physicsWorld.bodies.filter(b => b.isStatic), 'x')) collX = true;
+             this.localPlayerBody.position.y += this.localPlayerBody.velocity.y * (TICK_DT / 4);
+             if (this.physicsWorld['resolveCollisions'](this.localPlayerBody, this.physicsWorld.bodies.filter(b => b.isStatic), 'y')) collY = true;
+           }
+           if (collX) this.localPlayerBody.velocity.x = 0;
+           if (collY) this.localPlayerBody.velocity.y = 0;
+        }
       }
     }
 
@@ -144,6 +181,7 @@ export class MainScene extends Phaser.Scene {
       );
       this.updateSpriteColor(sprite, this.localPlayerController.chargeTicks, true);
     }
+
   }
 
   private updateSpriteColor(sprite: Phaser.GameObjects.Rectangle, chargeTicks: number, isLocal: boolean) {
