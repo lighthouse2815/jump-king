@@ -4,6 +4,7 @@ import express from "express";
 import http from "http";
 import cors from "cors";
 import { CommunityRoom } from "./rooms/CommunityRoom";
+import { RaceRoom } from "./rooms/RaceRoom";
 
 const port = Number(process.env.PORT || 2567);
 const app = express();
@@ -16,6 +17,7 @@ const gameServer = new Server({
 });
 
 gameServer.define("community_tower", CommunityRoom);
+gameServer.define("race_arena", RaceRoom);
 
 gameServer.listen(port).then(() => {
   console.log(`[GameServer] Listening on Port: ${port}`);

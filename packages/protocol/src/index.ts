@@ -7,16 +7,23 @@ export class PlayerState extends Schema {
   @type("number") y: number = 0;
   @type("number") chargeTime: number = 0;
   @type("int8") direction: number = 1;
+  @type("boolean") isReady: boolean = false;
+  @type("boolean") hasFinished: boolean = false;
+  @type("number") finishTime: number = 0;
 }
 
 export class GameState extends Schema {
   @type({ map: PlayerState }) players = new MapSchema<PlayerState>();
+  
+  // Race specific
+  @type("string") status: "WAITING" | "COUNTDOWN" | "RUNNING" | "FINISHED" = "WAITING";
+  @type("number") countdown: number = 3;
+  @type("number") startTime: number = 0;
 }
 
-// Input messages sent by client
 export interface PlayerInputMessage {
   left: boolean;
   right: boolean;
   jump: boolean;
-  seq: number; // For prediction reconciliation
+  seq: number;
 }

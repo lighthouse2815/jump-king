@@ -1,35 +1,21 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
-import Phaser from 'phaser';
-import { GameConfig } from './game/Game';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { LandingPage } from './pages/LandingPage';
+import { CommunityPage } from './pages/CommunityPage';
+import { RaceLobbyPage } from './pages/RaceLobbyPage';
+import { RaceGamePage } from './pages/RaceGamePage';
 import './index.css';
-
-const App = () => {
-  const gameRef = useRef<Phaser.Game | null>(null);
-
-  useEffect(() => {
-    if (!gameRef.current) {
-      gameRef.current = new Phaser.Game(GameConfig);
-    }
-    return () => {
-      if (gameRef.current) {
-        gameRef.current.destroy(true);
-        gameRef.current = null;
-      }
-    };
-  }, []);
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
-      <h1 className="text-3xl font-bold mb-4 font-mono">JUMP KING ONLINE</h1>
-      <div id="phaser-game" className="border-4 border-gray-700 rounded-lg overflow-hidden shadow-2xl"></div>
-      <p className="mt-4 text-gray-400">Controls: A/D or Left/Right to move. Hold Space to jump.</p>
-    </div>
-  );
-};
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/community" element={<CommunityPage />} />
+        <Route path="/race" element={<RaceLobbyPage />} />
+        <Route path="/race/:roomId" element={<RaceGamePage />} />
+      </Routes>
+    </BrowserRouter>
   </React.StrictMode>
 );
