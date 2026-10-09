@@ -1,34 +1,21 @@
-# Jump King Online Backlog
+# Jump King Online - Remediation Backlog
 
-## Phase 1: Foundation (Done)
-- [x] Initialize pnpm monorepo structure
-- [x] Setup React + Vite in `apps/web`
-- [x] Setup basic Phaser in `apps/web`
-- [x] Setup Node.js in `apps/game-server`
-- [x] Setup `packages/physics`, `protocol`, `game-config`, `maps`
-- [x] Setup lint, format, typecheck, testing
+## Step 1: Audit and Planning
+- [x] Create `docs/audit.md` mapping P0 issues
+- [x] Rewrite `docs/backlog.md` with new phases
 
-## Phase 2: Playable Offline Game (Done)
-- [x] Player movement (A/D)
-- [x] Charge jump (Space)
-- [x] Gravity & basic fall
-- [x] Collision detection (AABB)
-- [x] Camera follow
-- [x] First playable map loading
-- [ ] Animation setup
+## Step 2: Fix P0 - Build and Physics (Offline Core)
+- [ ] P0-07: Update shared packages to build properly for Node.js production.
+- [ ] P0-02: Rewrite physics loop for 60Hz fixed timestep and accurate collisions.
+- [ ] P0-01: Adjust physics constants and map definitions to ensure jump reachability.
 
-## Phase 3: Community Multiplayer (Done)
-- [x] Colyseus game room
-- [x] Input protocol & server-authoritative physics
-- [x] Client prediction & reconciliation
+## Step 3: Fix P1 - Multiplayer Correctness
+- [ ] P0-05: Implement sequence numbers and true client prediction/reconciliation.
+- [ ] P0-03: Fix Race lobby double connection and ghost sessions.
+- [ ] P0-06: Implement server-side input schema validation and rate limiting.
 
-## Phase 4: Race Arena (Done)
-- [x] Lobby creation & matching
-- [x] Match lifecycle & shared timer
+## Step 4: Fix P2 - Persistence Correctness
+- [ ] P0-04: Fix race result persistence, tie to match end, prevent duplicate users.
 
-## Phase 5: Persistence (Done)
-- [x] PostgreSQL integration
-- [x] Guest profile & progress
-
-## Phase 6: Polish (Done)
-- [x] Artwork, FX, sound, optimization
+## Step 5: Fix P3 - Visuals & Polish
+- [ ] Implement proper sprites, tilemaps instead of rectangles.
