@@ -2,7 +2,7 @@
   "name": "@jump-king/protocol",
   "version": "1.0.0",
   "private": true,
-  "main": "src/index.ts",
+  "main": "build/index.js",
   "dependencies": {
     "@colyseus/schema": "^2.0.34"
   },
@@ -11,5 +11,6 @@
   },
   "scripts": {
     "build": "tsc"
-  }
+  },
+  "types": "build/index.d.ts"
 }

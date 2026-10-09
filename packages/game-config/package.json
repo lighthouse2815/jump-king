@@ -2,12 +2,13 @@
   "name": "@jump-king/game-config",
   "version": "1.0.0",
   "private": true,
-  "main": "src/index.ts",
+  "main": "build/index.js",
   "dependencies": {},
   "devDependencies": {
     "typescript": "^5.3.3"
   },
   "scripts": {
     "build": "tsc"
-  }
+  },
+  "types": "build/index.d.ts"
 }

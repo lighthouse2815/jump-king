@@ -2,7 +2,7 @@
   "name": "@jump-king/physics",
   "version": "1.0.0",
   "private": true,
-  "main": "src/index.ts",
+  "main": "build/index.js",
   "dependencies": {},
   "devDependencies": {
     "typescript": "^5.3.3",
@@ -11,5 +11,6 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest run --passWithNoTests"
-  }
+  },
+  "types": "build/index.d.ts"
 }
