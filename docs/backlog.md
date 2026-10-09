@@ -17,12 +17,12 @@
 - [x] First playable map loading
 - [ ] Animation setup
 
-## Phase 3: Community Multiplayer (In Progress)
-- [ ] Colyseus game room
-- [ ] Input protocol & server-authoritative physics
-- [ ] Client prediction & reconciliation
+## Phase 3: Community Multiplayer (Done)
+- [x] Colyseus game room
+- [x] Input protocol & server-authoritative physics
+- [x] Client prediction & reconciliation
 
-## Phase 4: Race Arena
+## Phase 4: Race Arena (In Progress)
 - [ ] Lobby creation & matching
 - [ ] Match lifecycle & shared timer
 
