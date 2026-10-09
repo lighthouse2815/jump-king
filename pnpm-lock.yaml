@@ -57,6 +57,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@jump-king/physics':
+        specifier: workspace:*
+        version: link:../../packages/physics
       colyseus.js:
         specifier: ^0.15.0
         version: 0.15.28
@@ -69,9 +72,6 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
-      tailwindcss:
-        specifier: ^3.4.1
-        version: 3.4.19
     devDependencies:
       '@types/react':
         specifier: ^18.2.66
@@ -88,6 +88,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.7.0(supports-color@7.2.0)(vite@5.4.21(@types/node@20.19.43))
+      autoprefixer:
+        specifier: ^10.6.1
+        version: 10.6.1(postcss@8.5.29)
       eslint:
         specifier: ^8.57.0
         version: 8.57.1(supports-color@7.2.0)
@@ -97,6 +100,12 @@ importers:
       eslint-plugin-react-refresh:
         specifier: ^0.4.6
         version: 0.4.26(eslint@8.57.1(supports-color@7.2.0))
+      postcss:
+        specifier: ^8.5.29
+        version: 8.5.29
+      tailwindcss:
+        specifier: ^3.4.1
+        version: 3.4.19
       typescript:
         specifier: ^5.2.2
         version: 5.9.3
@@ -890,6 +899,13 @@ packages:
   assertion-error@1.1.0:
     resolution: {integrity: sha512-jgsaNduz+ndvGyFt3uSuWqvy4lCnIJiovtouQN5JZHOKCS2QuhEdbcQHFhVksz2N2U9hXJo8odG7ETyWlEeuDw==}
 
+  autoprefixer@10.6.1:
+    resolution: {integrity: sha512-cL1Qz6ADZhcEbny/8HPfe99J6HhNoYtpX2LFLIbhgGE7Q1hlQVkYFdetDN7Id3KiQxhDrHwzlHr/YQCnZ8+xSA==}
+    engines: {node: ^10 || ^12 || >=14}
+    hasBin: true
+    peerDependencies:
+      postcss: ^8.1.0
+
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
@@ -1291,6 +1307,9 @@ packages:
   forwarded@0.2.0:
     resolution: {integrity: sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==}
     engines: {node: '>= 0.6'}
+
+  fraction.js@5.3.4:
+    resolution: {integrity: sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==}
 
   fresh@0.5.2:
     resolution: {integrity: sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==}
@@ -3053,6 +3072,15 @@ snapshots:
 
   assertion-error@1.1.0: {}
 
+  autoprefixer@10.6.1(postcss@8.5.29):
+    dependencies:
+      browserslist: 4.29.3
+      caniuse-lite: 1.0.30001815
+      fraction.js: 5.3.4
+      picocolors: 1.1.1
+      postcss: 8.5.29
+      postcss-value-parser: 4.2.0
+
   balanced-match@1.0.2: {}
 
   baseline-browser-mapping@2.11.27: {}
@@ -3555,6 +3583,8 @@ snapshots:
   flatted@3.4.4: {}
 
   forwarded@0.2.0: {}
+
+  fraction.js@5.3.4: {}
 
   fresh@0.5.2: {}
 
