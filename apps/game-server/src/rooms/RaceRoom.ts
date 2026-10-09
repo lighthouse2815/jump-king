@@ -12,6 +12,8 @@ export class RaceRoom extends Room<GameState> {
   private playerBodies = new Map<string, Body>();
   private playerControllers = new Map<string, PlayerController>();
   private inputs = new Map<string, PlayerInputMessage>();
+  private participants = new Map<string, { nickname: string, hasFinished: boolean, finishTime: number | null, maxHeight: number }>();
+  private resultsSaved = false;
 
   private fixedTimeStep = 1000 / 60;
   private timer: any;
@@ -26,13 +28,23 @@ export class RaceRoom extends Room<GameState> {
                         // Finish line platform
     
         
-    this.onMessage("input", (client, input: PlayerInputMessage) => {
-      if (this.state.status === "RUNNING") {
-        this.inputs.set(client.sessionId, input);
-      }
+    this.onMessage("input", (client, input: any) => {
+      if (typeof input !== 'object' || input === null) return;
+      if (typeof input.left !== 'boolean' || typeof input.right !== 'boolean' || typeof input.jump !== 'boolean' || typeof input.seq !== 'number') return;
+      if (this.state.status !== "RUNNING") return;
+      const player = this.state.players.get(client.sessionId);
+      if (player?.hasFinished) return;
+      
+      this.inputs.set(client.sessionId, {
+        left: input.left,
+        right: input.right,
+        jump: input.jump,
+        seq: input.seq
+      });
     });
 
-    this.onMessage("ready", (client, isReady: boolean) => {
+    this.onMessage("ready", (client, isReady: any) => {
+      if (typeof isReady !== 'boolean') return;
       if (this.state.status === "WAITING") {
         const player = this.state.players.get(client.sessionId);
         if (player) {
@@ -90,6 +102,12 @@ export class RaceRoom extends Room<GameState> {
     player.y = 500;
     
     this.state.players.set(client.sessionId, player);
+    this.participants.set(client.sessionId, {
+      nickname: player.nickname,
+      hasFinished: false,
+      finishTime: null,
+      maxHeight: 0
+    });
 
     const body = new Body(player.x, player.y, 20, 30);
     this.physicsWorld.addBody(body);
@@ -146,19 +164,35 @@ export class RaceRoom extends Room<GameState> {
         if (player.y <= -250) {
           player.hasFinished = true;
           player.finishTime = Date.now() - this.state.startTime;
+          const participant = this.participants.get(sessionId);
+          if (participant) {
+            participant.hasFinished = true;
+            participant.finishTime = player.finishTime;
+          }
+        }
+        
+        const participant = this.participants.get(sessionId);
+        if (participant) {
+          const height = -Math.round(player.y);
+          if (height > participant.maxHeight) {
+            participant.maxHeight = height;
+          }
         }
       }
     });
 
-    if (allFinished && someoneActive) {
+    if (allFinished && someoneActive && !this.resultsSaved) {
       this.state.status = "FINISHED";
+      this.saveResults();
     }
   }
 
-  async onDispose() {
+  async saveResults() {
+    if (this.resultsSaved) return;
+    this.resultsSaved = true;
     console.log("Saving race results for room", this.roomId);
+    
     try {
-      // Mock saving for now as we don't have db active in tests usually
       const match = await db.insert(raceMatches).values({
         roomCode: this.roomId,
         status: this.state.status,
@@ -166,20 +200,33 @@ export class RaceRoom extends Room<GameState> {
       
       const matchId = match[0].id;
       
-      for (const [sessionId, player] of this.state.players.entries()) {
-        // Create guest user
-        const user = await db.insert(users).values({ nickname: player.nickname }).returning();
+      for (const [sessionId, p] of this.participants.entries()) {
+        let userResult = await db.query.users.findFirst({
+          where: (users, { eq }) => eq(users.nickname, p.nickname)
+        });
+        
+        if (!userResult) {
+          const inserted = await db.insert(users).values({ nickname: p.nickname }).returning();
+          userResult = inserted[0];
+        }
+        
         await db.insert(raceParticipants).values({
           matchId,
-          userId: user[0].id,
-          finishTime: player.hasFinished ? player.finishTime : null,
-          maxHeight: -Math.round(player.y), // simple metric
+          userId: userResult.id,
+          finishTime: p.hasFinished ? p.finishTime : null,
+          maxHeight: p.maxHeight,
         });
       }
+      console.log("Race results saved successfully.");
     } catch (e) {
       console.error('Failed to save match', e);
     }
+  }
 
+  async onDispose() {
+    if (this.state.status === "RUNNING") {
+      await this.saveResults();
+    }
     if (this.countdownTimer) this.countdownTimer.clear();
   }
 }

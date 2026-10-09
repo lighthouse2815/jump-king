@@ -24,8 +24,19 @@ export class CommunityRoom extends Room<GameState> {
 
     // Map: same as client for now
                                 
-    this.onMessage("input", (client, input: PlayerInputMessage) => {
-      this.inputs.set(client.sessionId, input);
+    this.onMessage("input", (client, input: any) => {
+      // Validate input shape
+      if (typeof input !== 'object' || input === null) return;
+      if (typeof input.left !== 'boolean' || typeof input.right !== 'boolean' || typeof input.jump !== 'boolean' || typeof input.seq !== 'number') {
+        return;
+      }
+      
+      this.inputs.set(client.sessionId, {
+        left: input.left,
+        right: input.right,
+        jump: input.jump,
+        seq: input.seq
+      });
     });
 
     this.setSimulationInterval((deltaTime) => this.update(deltaTime), this.fixedTimeStep);

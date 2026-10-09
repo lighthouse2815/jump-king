@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { MAP_1 } from '@jump-king/maps';
 import { PhysicsWorld, Body, PlayerController, GAME_CONFIG } from '@jump-king/physics';
 import { PlayerInputMessage, PlayerState } from '@jump-king/protocol';
-import { NetworkManager } from '../networking/NetworkManager';
+import { networkManager } from '../networking/NetworkManager';
 
 export class RaceScene extends Phaser.Scene {
   private physicsWorld!: PhysicsWorld;
@@ -16,7 +16,7 @@ export class RaceScene extends Phaser.Scene {
   private keyA!: Phaser.Input.Keyboard.Key;
   private keyD!: Phaser.Input.Keyboard.Key;
 
-  private network!: NetworkManager;
+  private network = networkManager;
   private accumulator = 0;
   private inputSeq = 0;
   private pendingInputs: PlayerInputMessage[] = [];
@@ -47,8 +47,13 @@ export class RaceScene extends Phaser.Scene {
   }
 
   async connect() {
-    this.network = new NetworkManager();
-    const joined = await this.network.joinRaceRoom(this.roomId);
+    // If we already created/joined this room in lobby, use it
+    let joined = false;
+    if (this.network.room && this.network.room.id === this.roomId) {
+      joined = true;
+    } else {
+      joined = await this.network.joinRaceRoom(this.roomId);
+    }
     
     if (joined && this.network.room) {
       this.uiStateRef.status = 'WAITING';

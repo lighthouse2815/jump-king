@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { MAP_1 } from '@jump-king/maps';
 import { PhysicsWorld, Body, PlayerController, GAME_CONFIG } from '@jump-king/physics';
 import { PlayerInputMessage, PlayerState } from '@jump-king/protocol';
-import { NetworkManager } from '../networking/NetworkManager';
+import { networkManager } from '../networking/NetworkManager';
 
 export class MainScene extends Phaser.Scene {
   private physicsWorld!: PhysicsWorld;
@@ -18,7 +18,7 @@ export class MainScene extends Phaser.Scene {
   private keyA!: Phaser.Input.Keyboard.Key;
   private keyD!: Phaser.Input.Keyboard.Key;
 
-  private network!: NetworkManager;
+  private network = networkManager;
   private accumulator = 0;
   private inputSeq = 0;
   private pendingInputs: PlayerInputMessage[] = [];
@@ -33,7 +33,7 @@ export class MainScene extends Phaser.Scene {
 
                                 
     // Connect to server
-    this.network = new NetworkManager();
+    // this.network is singleton
     await this.network.connectToCommunityTower();
 
     if (this.network.room) {

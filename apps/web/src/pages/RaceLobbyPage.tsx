@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { NetworkManager } from '../game/networking/NetworkManager';
+import { networkManager } from '../game/networking/NetworkManager';
 
 export const RaceLobbyPage = () => {
   const navigate = useNavigate();
   const [roomCode, setRoomCode] = useState('');
 
   const handleCreate = async () => {
-    const net = new NetworkManager();
-    const id = await net.createRaceRoom();
+    
+    const id = await networkManager.createRaceRoom();
     if (id) {
       // We pass the net instance or room ID. For simplicity, we just pass ID and reconnect in GamePage.
       navigate(`/race/${id}`);

@@ -54,3 +54,5 @@ export class NetworkManager {
     }
   }
 }
+
+export const networkManager = new NetworkManager();
