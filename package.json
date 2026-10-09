@@ -1,0 +1,19 @@
+{
+  "name": "jump-king",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter web run dev & pnpm --filter game-server run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0",
+    "prettier": "^3.2.0"
+  }
+}
