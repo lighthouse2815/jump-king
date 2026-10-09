@@ -9,10 +9,10 @@
 - [x] Setup lint, format, typecheck, testing
 
 ## Phase 2: Playable Offline Game (In Progress)
-- [ ] Player movement (A/D)
-- [ ] Charge jump (Space)
-- [ ] Gravity & basic fall
-- [ ] Collision detection (AABB)
+- [x] Player movement (A/D)
+- [x] Charge jump (Space)
+- [x] Gravity & basic fall
+- [x] Collision detection (AABB)
 - [ ] Camera follow
 - [ ] First playable map loading
 - [ ] Animation setup
