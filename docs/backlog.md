@@ -1,14 +1,14 @@
 # Jump King Online Backlog
 
-## Phase 1: Foundation (In Progress)
-- [ ] Initialize pnpm monorepo structure
-- [ ] Setup React + Vite in `apps/web`
-- [ ] Setup basic Phaser in `apps/web`
-- [ ] Setup Node.js in `apps/game-server`
-- [ ] Setup `packages/physics`, `protocol`, `game-config`, `maps`
-- [ ] Setup lint, format, typecheck, testing
+## Phase 1: Foundation (Done)
+- [x] Initialize pnpm monorepo structure
+- [x] Setup React + Vite in `apps/web`
+- [x] Setup basic Phaser in `apps/web`
+- [x] Setup Node.js in `apps/game-server`
+- [x] Setup `packages/physics`, `protocol`, `game-config`, `maps`
+- [x] Setup lint, format, typecheck, testing
 
-## Phase 2: Playable Offline Game (Not Started)
+## Phase 2: Playable Offline Game (In Progress)
 - [ ] Player movement (A/D)
 - [ ] Charge jump (Space)
 - [ ] Gravity & basic fall
