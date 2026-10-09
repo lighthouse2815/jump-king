@@ -1,0 +1,6 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn pnpm approve-builds
+expect "Choose which packages to build"
+send " \r\n"
+expect eof

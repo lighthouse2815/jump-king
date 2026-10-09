@@ -1,0 +1,542 @@
+﻿PROMPT — BUILD JUMP KING ONLINE MULTIPLAYER
+Bạn là Senior Game Developer, Full-stack Engineer và Software Architect, có kinh nghiệm xây dựng game 2D platformer, multiplayer realtime, game physics, TypeScript, React, Phaser và Colyseus.
+Nhiệm vụ của bạn là trực tiếp phát triển một web game 2D lấy cảm hứng từ Jump King, có thể chơi online với nhiều người, tạo phòng đua và triển khai lên Internet.
+Đây là một dự án game thực tế. Không được chỉ tạo UI mockup, prototype giả hoặc viết kế hoạch mà không triển khai.
+1. THÔNG TIN DỰ ÁN
+    • Tên dự án: jump-king
+    • GitHub: https://github.com/lighthouse2815/jump-king.git
+    • Loại: 2D Pixel Art Precision Platformer
+    • Nền tảng: Web browser
+    • Multiplayer: Realtime qua WebSocket
+    • Chế độ: Community Tower và Race Arena
+    • Mục tiêu: Người chơi truy cập website, điều khiển nhân vật leo tháp, nhìn thấy người chơi khác và có thể thi đấu online.
+Trước khi bắt đầu:
+    1. Kiểm tra Git, Node.js, package manager và các công cụ hiện có.
+    2. Clone repository nếu chưa có trên máy.
+    3. Kiểm tra toàn bộ nội dung repository, branch, commit history và cấu trúc hiện tại.
+    4. Nếu repository đã có code, phân tích và tái sử dụng những gì phù hợp. Không tự ý xóa code đang hoạt động.
+    5. Nếu repository trống, khởi tạo project từ đầu.
+    6. Kiểm tra các dependency và sử dụng phiên bản stable tương thích thực tế.
+    7. Đọc và tuân thủ AGENTS.md nếu repository có file này.
+Không giả định repository đang trống.
+2. TECH STACK
+Sử dụng kiến trúc monorepo với:
+Frontend
+    • React
+    • TypeScript
+    • Vite
+    • Phaser (phiên bản stable tương thích)
+    • Tailwind CSS cho website, lobby, HUD và UI
+    • Zustand nếu cần quản lý client state
+Backend
+    • Node.js
+    • TypeScript
+    • Colyseus cho realtime multiplayer, room và matchmaking
+    • PostgreSQL cho dữ liệu cần lưu lâu dài
+    • ORM và migration phù hợp, ưu tiên Drizzle ORM
+    • REST API cho thông tin tài khoản, leaderboard, profile
+Shared packages
+    • physics: logic vật lý không phụ thuộc browser hoặc Phaser
+    • protocol: định nghĩa message và network types
+    • game-config: các hằng số và cấu hình game
+    • maps: dữ liệu bản đồ, collision và metadata
+Development
+    • pnpm workspaces
+    • ESLint
+    • Prettier
+    • Vitest
+    • Docker Compose
+    • .env.example
+Kiến trúc phải cho phép frontend và backend chạy độc lập.
+Không tạo microservice thừa khi chưa cần.
+3. GAMEPLAY CORE — ƯU TIÊN CAO NHẤT
+Game phải có cảm giác nhảy chính xác, khó và mang tính trừng phạt tương tự thể loại Jump King.
+3.1. Movement
+Phím điều khiển:
+    • A / D: di chuyển trái, phải
+    • Arrow Left / Right: lựa chọn thay thế
+    • Space: giữ để tích lực nhảy
+    • Thả Space: thực hiện cú nhảy
+    • Esc: mở menu
+    • T: chat
+    • E: emote
+Cơ chế di chuyển:
+    • Nhân vật chỉ được tích lực khi đứng trên nền.
+    • Khi giữ Space, jump charge tăng dần đến giới hạn.
+    • Lực nhảy phụ thuộc vào thời gian giữ Space.
+    • Cho phép chọn hướng trái, phải hoặc nhảy thẳng.
+    • Khi đã bật nhảy, hướng và quỹ đạo bị khóa theo thiết kế.
+    • Không có double jump.
+    • Không có wall jump.
+    • Không có air control để cứu cú nhảy.
+    • Khi rơi, nhân vật chịu trọng lực và va chạm thực tế.
+    • Chỉ được bắt đầu cú nhảy mới khi đã tiếp đất hợp lệ.
+Thông số ban đầu để playtest:
+    • Physics tick rate: 60Hz
+    • Max charge: 1 giây
+    • Gravity: khoảng 1300 px/s²
+    • Jump velocity: 250–570 px/s
+    • Ground movement speed: khoảng 130 px/s
+Các giá trị phải được định nghĩa trong game config và có thể điều chỉnh dễ dàng.
+3.2. Physics
+Tạo physics engine 2D đơn giản, tập trung vào precision platformer.
+Yêu cầu:
+    • Fixed timestep
+    • Velocity và gravity
+    • AABB collision
+    • Horizontal collision
+    • Vertical collision
+    • Landing detection
+    • Grounded state
+    • One-way platform nếu được bản đồ sử dụng
+    • Không xuyên tường hoặc xuyên sàn khi tốc độ lớn
+    • Không bị kẹt vào cạnh platform
+    • Xử lý đúng khi đi qua ranh giới giữa hai vùng bản đồ
+Không phụ thuộc hoàn toàn vào Phaser Arcade Physics cho logic gameplay cốt lõi.
+Physics phải có thể chạy headless trên server.
+Client và server phải chia sẻ cùng code mô phỏng.
+Tạo unit test cho physics, đặc biệt là các trường hợp nhảy, rơi, va chạm cạnh, giữ phím và thả phím.
+3.3. Fall System
+Nếu nhảy hụt:
+    • Nhân vật phải rơi theo vật lý.
+    • Có thể rơi qua nhiều tầng.
+    • Camera theo nhân vật khi rơi.
+    • Không teleport trở về điểm cao nhất.
+    • Không tự động hồi phục tiến độ đã mất.
+    • Nhân vật có animation rơi, tiếp đất và trạng thái tương ứng.
+Đây là cơ chế quan trọng tạo nên độ khó của game.
+4. CAMERA SYSTEM
+Thiết kế camera 2D dành cho bản đồ thẳng đứng:
+    • Theo dõi nhân vật khi leo lên.
+    • Theo dõi khi nhân vật rơi xuống.
+    • Chuyển động mượt.
+    • Không rung giật.
+    • Giới hạn trong map bounds.
+    • Hỗ trợ nhiều khu vực và màn hình.
+    • Có thể sử dụng camera deadzone phù hợp.
+    • Không để camera làm lộ các vùng ngoài bản đồ.
+Mỗi người chơi có camera riêng trên client.
+5. MAP SYSTEM
+Thiết kế một tòa tháp có 5 khu vực:
+    1. Forgotten Garden: Khu vực hướng dẫn, dễ.
+    2. Broken Castle: Những platform nhỏ hơn, khó vừa.
+    3. Dark Forest: Các cú nhảy cần căn khoảng cách chính xác.
+    4. Frozen Heights: Đường đi nguy hiểm, khả năng rơi xa.
+    5. Sky King's Throne: Khu vực cuối cực khó.
+Yêu cầu:
+    • Dùng tilemap hoặc dữ liệu bản đồ có cấu trúc.
+    • Có thể dùng Tiled Map Editor.
+    • Platform phải có collision thực tế.
+    • Map có metadata và version.
+    • Tải và render các vùng bản đồ hiệu quả.
+    • Thiết kế các cú nhảy sao cho nhân vật có thể vượt qua với physics hiện tại.
+    • Không tạo đoạn map bất khả thi.
+    • Có vùng đích rõ ràng.
+    • Bản đồ phải có đường đi liên tục từ chân tháp lên đỉnh.
+Ban đầu ưu tiên hoàn thiện một bản đồ chơi được từ đầu đến cuối, thay vì nhiều map chưa hoàn chỉnh.
+6. PIXEL ART & ANIMATION
+Mong muốn hình ảnh mang phong cách:
+    • 2D retro pixel art
+    • Fantasy medieval
+    • Nhân vật nhỏ, dễ nhìn
+    • Ánh sáng, màu sắc và chiều sâu hợp lý
+    • Platform rõ ràng, không gây nhầm lẫn về vùng va chạm
+    • Background nhiều lớp có parallax vừa phải
+    • Camera và animation mượt
+Animation nhân vật:
+    • Idle
+    • Walk
+    • Charge jump
+    • Jump
+    • Fall
+    • Landing
+    • Victory
+Ưu tiên làm gameplay hoạt động bằng asset gốc đơn giản trước, sau đó cải thiện pixel art.
+Không sao chép sprite, background, soundtrack, nhân vật hay bản đồ có bản quyền từ Jump King.
+Nếu chưa có artwork hoàn chỉnh, tạo placeholder có phong cách pixel art thống nhất và dễ thay thế, không sử dụng asset có nguồn gốc không rõ ràng.
+7. COMMUNITY TOWER MULTIPLAYER
+Đây là chế độ online chính.
+Nhiều người chơi cùng leo một tòa tháp.
+Yêu cầu:
+    • Người chơi có thể tham gia một thế giới.
+    • Một thế giới ban đầu hỗ trợ tối đa 20 người.
+    • Nếu thế giới đầy, hệ thống tạo hoặc lựa chọn thế giới khác.
+    • Người chơi có thể tham gia khi thế giới đã hoạt động.
+    • Mỗi người chơi điều khiển nhân vật riêng.
+    • Có thể nhìn thấy chuyển động của người khác.
+    • Hiển thị nickname trên nhân vật.
+    • Có thể gửi emote.
+    • Có thể xem danh sách người chơi.
+    • Hiển thị độ cao hiện tại của mỗi người.
+    • Có thanh tiến độ dọc thể hiện vị trí người chơi.
+    • Không có va chạm vật lý giữa các nhân vật ở MVP.
+Đồng bộ realtime
+Server phải là authoritative source.
+Client gửi input, không gửi tọa độ tùy ý làm trạng thái xác thực.
+Server:
+    • Nhận input
+    • Validate input
+    • Mô phỏng vật lý
+    • Kiểm tra collision
+    • Cập nhật player state
+    • Gửi trạng thái xác thực cho client
+Client:
+    • Dự đoán chuyển động của nhân vật local
+    • Reconcile theo server state
+    • Interpolate nhân vật từ xa
+    • Xử lý khi mất kết nối
+    • Tránh giật và teleport bất thường
+Thiết kế để tránh việc một người chơi mạng lag làm ảnh hưởng tới vật lý của người khác.
+Mặc định mô phỏng server 60Hz, thử nghiệm snapshot khoảng 20Hz và điều chỉnh theo benchmark.
+Persistence
+Community Tower có thể lưu tiến độ.
+Nhưng cần đặc biệt lưu ý:
+    • Không cho phép disconnect để tránh bị rơi.
+    • Không tin tọa độ từ client.
+    • Khi reconnect, chỉ khôi phục trạng thái do server xác nhận.
+    • Nếu người chơi ngắt mạng giữa lúc rơi, xử lý phiên mất kết nối theo chính sách nhất quán.
+    • Không dùng maxHeight làm tọa độ respawn.
+    • Có cơ chế cleanup người chơi không hoạt động.
+8. RACE ARENA MULTIPLAYER
+Tạo chế độ thi đấu online 2–8 người.
+Lobby
+Người chơi có thể:
+    • Tạo phòng.
+    • Nhận room code.
+    • Copy room code hoặc invitation link.
+    • Tham gia bằng mã.
+    • Xem danh sách người chơi.
+    • Ready / Unready.
+    • Host bắt đầu trận khi điều kiện hợp lệ.
+    • Rời phòng.
+Match Lifecycle
+Các trạng thái:
+WAITING -> COUNTDOWN -> RUNNING -> FINISHED
+Có thêm trạng thái hủy khi cần.
+Khi bắt đầu:
+    • Countdown 3 giây.
+    • Tất cả nhân vật bắt đầu tại cùng vị trí.
+    • Mỗi người có state độc lập.
+    • Server bắt đầu đồng hồ.
+    • Không cho input di chuyển trước thời điểm xuất phát.
+Trong trận:
+    • Cập nhật realtime.
+    • Có timer.
+    • Có bảng thứ hạng.
+    • Có progress bar.
+    • Có thông tin độ cao.
+    • Có thể nhìn thấy những người chơi ở gần.
+    • Không có checkpoint trong Ranked.
+Điều kiện chiến thắng:
+    • Người đầu tiên chạm vùng đích hợp lệ.
+    • Server quyết định kết quả.
+    • Không tin event chiến thắng từ client.
+    • Lưu thời gian hoàn thành chính xác.
+    • Hỗ trợ kết quả khi người chơi không về đích.
+    • Xử lý disconnect và reconnect.
+Sau trận:
+    • Hiển thị podium / result screen.
+    • Hiển thị thứ hạng.
+    • Hiển thị thời gian.
+    • Hiển thị độ cao tối đa.
+    • Cho phép rematch.
+    • Lưu match history.
+Không triển khai vật phẩm ảnh hưởng lực nhảy hoặc tốc độ trong Ranked.
+9. WEBSITE UI/UX
+React đảm nhiệm website và HUD, Phaser render gameplay.
+Các trang cần thiết:
+    • / — Landing Page
+    • /play — Chọn chế độ
+    • /community — Community Tower
+    • /race — Race Arena
+    • /room/:code — Race Lobby
+    • /leaderboard — Leaderboard
+    • /profile/:username — Player Profile
+    • /settings — Settings
+Landing Page
+Thiết kế đẹp, hiện đại, phong cách pixel fantasy.
+Có:
+    • Logo JUMP KING ONLINE (working title)
+    • Background fantasy pixel art riêng
+    • Nút Play Now
+    • Community Tower
+    • Race Arena
+    • Leaderboard
+    • Hướng dẫn điều khiển
+    • Hiệu ứng hover và transition
+Game HUD
+Hiển thị:
+    • Player nickname
+    • Current height
+    • Max height
+    • Jump charge indicator
+    • Timer nếu chơi Race
+    • Race ranking nếu chơi Race
+    • Player list
+    • Ping hoặc connection status
+    • Emote menu
+    • Pause / settings
+HUD không được che vùng gameplay quan trọng.
+Responsive
+    • Desktop là nền tảng ưu tiên.
+    • Website phải responsive.
+    • Game canvas thay đổi kích thước hợp lý.
+    • Nếu hỗ trợ mobile, cần touch controls riêng.
+    • Không làm giảm trải nghiệm desktop để ép hỗ trợ mobile ngay từ MVP.
+10. DATABASE
+Sử dụng PostgreSQL.
+Thiết kế các bảng chính:
+    • users
+    • player_profiles
+    • maps
+    • map_versions nếu cần
+    • player_progress
+    • race_matches
+    • race_participants
+Yêu cầu:
+    • ID nhất quán, ưu tiên UUID.
+    • Foreign key chính xác.
+    • Unique constraint hợp lý.
+    • Index cho leaderboard và lịch sử trận.
+    • Migration có version.
+    • Không lưu player position 60 lần/giây vào DB.
+    • Chỉ lưu snapshot hợp lệ theo thời điểm cần thiết.
+    • Ghi kết quả trận theo transaction.
+    • Phòng tránh duplicate result.
+    • Không hardcode secret.
+Cho phép người chơi trải nghiệm bằng guest nickname ở giai đoạn đầu.
+Account authentication chính thức có thể triển khai sau khi gameplay multiplayer ổn định.
+11. PROJECT STRUCTURE
+Cấu trúc mong muốn:
+jump-king/
+├── apps/
+│   ├── web/
+│   │   └── src/
+│   │       ├── pages/
+│   │       ├── components/
+│   │       ├── game/
+│   │       │   ├── scenes/
+│   │       │   ├── entities/
+│   │       │   ├── camera/
+│   │       │   └── networking/
+│   │       └── stores/
+│   └── game-server/
+│       └── src/
+│           ├── rooms/
+│           ├── systems/
+│           ├── matchmaking/
+│           ├── persistence/
+│           └── auth/
+├── packages/
+│   ├── physics/
+│   ├── protocol/
+│   ├── game-config/
+│   └── maps/
+├── assets/
+├── infra/
+├── docs/
+├── AGENTS.md
+├── README.md
+└── package.json
+Có thể điều chỉnh khi có lý do kỹ thuật rõ ràng, nhưng phải duy trì ranh giới giữa rendering, game physics, networking và persistence.
+Không gom toàn bộ game logic vào một file.
+Không viết mọi thứ trực tiếp trong React component.
+12. TESTING & QUALITY
+Bắt buộc kiểm chứng code thật.
+Unit Tests
+    • Charge jump
+    • Jump release
+    • Ground movement
+    • Gravity
+    • Collision
+    • Fall
+    • Landing
+    • Player state transitions
+    • Physics edge cases
+Integration Tests
+    • Create room
+    • Join room
+    • Room full
+    • Disconnect
+    • Reconnect
+    • Input validation
+    • Race start
+    • Finish detection
+    • Match result
+    • Persistence
+    • Leaderboard
+Multiplayer Tests
+    • Hai client kết nối một phòng.
+    • Input của người chơi A không điều khiển người chơi B.
+    • Cả hai nhận cùng trạng thái xác thực từ server.
+    • Người chơi không thể gửi vị trí giả.
+    • Kết quả Race không thể bị client tự sửa.
+    • Kết nối lại không tạo duplicate player.
+    • Room cleanup hoạt động.
+Frontend
+    • Typecheck pass.
+    • Lint pass.
+    • Build pass.
+    • Không có runtime error không được xử lý.
+    • Asset load đúng.
+    • Game chạy thực tế trong browser.
+Nếu có browser automation, hãy sử dụng để kiểm tra trực tiếp thao tác người chơi, render và UI.
+Không được báo PASS khi chưa thật sự chạy test.
+Nếu có test không thể chạy vì hạn chế môi trường, phải nói rõ.
+13. SECURITY
+Backend là nguồn dữ liệu đáng tin cậy.
+Bắt buộc:
+    • Validate tất cả network messages.
+    • Giới hạn input rate.
+    • Không tin client coordinates.
+    • Không tin client timers.
+    • Không tin client finish events.
+    • Kiểm tra quyền điều khiển nhân vật.
+    • Room code đủ khó đoán.
+    • Hạn chế spam chat và emote.
+    • Không để client tự chỉnh kết quả.
+    • Secrets lấy từ environment.
+    • Không commit .env chứa thông tin nhạy cảm.
+    • Xử lý lỗi và disconnect an toàn.
+14. DEVELOPMENT WORKFLOW — RẤT QUAN TRỌNG
+Không triển khai toàn bộ dự án trong một thay đổi khổng lồ.
+Phải chia thành các task nhỏ, có thể kiểm chứng.
+Trước khi code:
+    1. Kiểm tra repository.
+    2. Xác định trạng thái hiện tại.
+    3. Tạo docs/architecture.md.
+    4. Tạo docs/backlog.md.
+    5. Tạo hoặc cập nhật AGENTS.md với quy ước dự án.
+    6. Lập thứ tự task theo dependency.
+Sau đó bắt đầu triển khai ngay, không dừng ở phần kế hoạch.
+Quy tắc bắt buộc cho mỗi task
+    1. Chọn một task chưa hoàn thành.
+    2. Đọc code liên quan.
+    3. Triển khai task.
+    4. Viết hoặc cập nhật test phù hợp.
+    5. Chạy các bước kiểm chứng.
+    6. Sửa lỗi nếu có.
+    7. Cập nhật backlog.
+    8. Commit code.
+    9. Push lên GitHub.
+    10. Tiếp tục task tiếp theo.
+Mỗi task hoàn thành phải được commit và push riêng, không gom nhiều task lớn thành một commit.
+Commit convention:
+    • chore:
+    • feat:
+    • fix:
+    • refactor:
+    • test:
+    • docs:
+Ví dụ:
+    • chore: initialize jump-king monorepo
+    • feat: implement charge jump physics
+    • feat: add platform collision system
+    • feat: implement vertical follow camera
+    • feat: add community multiplayer room
+    • feat: implement race lobby
+    • feat: add server-authoritative race results
+Không force push, không xóa lịch sử Git, không ghi đè thay đổi chưa được kiểm tra.
+Push lên branch hiện tại phù hợp với workflow repository. Nếu đang làm trực tiếp trên main và được phép push, có thể push origin/main.
+Nếu push bị từ chối, phải xử lý an toàn hoặc báo rõ nguyên nhân, không tuyên bố đã push thành công.
+15. IMPLEMENTATION ORDER
+Triển khai theo thứ tự ưu tiên:
+Phase 1 — Foundation
+    • Khởi tạo monorepo.
+    • Thiết lập React + Vite.
+    • Thiết lập Phaser.
+    • Thiết lập game-server.
+    • Thiết lập shared packages.
+    • Thiết lập lint, format, typecheck, tests.
+    • Thiết lập Docker Compose nếu cần.
+Phase 2 — Playable Offline Game
+    • Player movement.
+    • Charge jump.
+    • Gravity.
+    • Collision.
+    • Camera.
+    • Animation.
+    • Level loading.
+    • First playable map.
+    • Fall system.
+Không được chuyển sang multiplayer nếu gameplay offline chưa hoạt động ổn định.
+Phase 3 — Community Multiplayer
+    • Colyseus game room.
+    • Player session.
+    • Input protocol.
+    • Server-authoritative physics.
+    • State synchronization.
+    • Prediction / reconciliation.
+    • Remote player interpolation.
+    • Join / leave / reconnect.
+    • Player labels và emotes.
+Phase 4 — Race Arena
+    • Create room.
+    • Join by code.
+    • Ready state.
+    • Countdown.
+    • Match lifecycle.
+    • Shared timer.
+    • Ranking.
+    • Finish detection.
+    • Result screen.
+Phase 5 — Persistence
+    • PostgreSQL.
+    • Database migrations.
+    • Guest identity.
+    • Player progress.
+    • Match history.
+    • Leaderboard.
+    • Profile.
+Phase 6 — Polish & Deployment
+    • Cải thiện artwork.
+    • Animation polish.
+    • Sound effects.
+    • UX improvements.
+    • Loading screens.
+    • Error handling.
+    • Performance optimization.
+    • Realtime network tests.
+    • Docker build.
+    • Deployment instructions.
+16. DEFINITION OF DONE
+Một task chỉ được đánh dấu hoàn thành khi:
+    • Chức năng được triển khai thực tế.
+    • Code build được.
+    • Không phát sinh lỗi lint/typecheck liên quan.
+    • Test phù hợp pass.
+    • Không phá các tính năng trước đó.
+    • Tài liệu được cập nhật nếu cần.
+    • Đã commit.
+    • Đã push thành công, hoặc ghi rõ blocker nếu push không thể thực hiện.
+Không sử dụng mock data để giả vờ multiplayer hoạt động.
+Không dùng setTimeout giả để mô phỏng server.
+Không tạo UI hiển thị leaderboard giả rồi tuyên bố đã hoàn thành leaderboard.
+Mọi trạng thái multiplayer và kết quả thi đấu phải có cơ chế backend thực sự.
+17. YÊU CẦU BÁO CÁO
+Sau mỗi task, báo cáo ngắn gọn:
+    • Task vừa hoàn thành
+    • Các chức năng đã triển khai
+    • File chính đã thay đổi
+    • Lệnh đã chạy
+    • Kết quả test
+    • Commit hash
+    • Push status
+    • Task tiếp theo
+Không cần giải thích quá dài nếu task đã được kiểm chứng.
+Ưu tiên tiến độ triển khai thực tế.
+18. BẮT ĐẦU NGAY
+Bắt đầu từ repository:
+https://github.com/lighthouse2815/jump-king.git
+Thực hiện theo thứ tự:
+    1. Kiểm tra repository hiện tại.
+    2. Phân tích cấu trúc và code có sẵn.
+    3. Chọn phiên bản dependency tương thích.
+    4. Lập architecture và backlog cụ thể.
+    5. Triển khai foundation.
+    6. Chạy build/test.
+    7. Commit và push.
+    8. Tiếp tục triển khai player movement và charge jump.
+Đừng chỉ trả lời bằng kế hoạch hoặc hỏi tôi có muốn bắt đầu không. Hãy trực tiếp sử dụng terminal, chỉnh sửa source code và tiến hành triển khai nếu môi trường cho phép.
+Mục tiêu cuối cùng là biến jump-king thành một web game multiplayer thực sự, chơi được từ nhiều máy tính qua Internet, có gameplay chất lượng, tháp leo chung và chế độ đua online.
+

@@ -26,6 +26,12 @@ importers:
       '@colyseus/ws-transport':
         specifier: ^0.15.0
         version: 0.15.3(@colyseus/core@0.15.57(@colyseus/schema@2.0.37)(supports-color@7.2.0))(@colyseus/schema@2.0.37)
+      '@jump-king/physics':
+        specifier: workspace:*
+        version: link:../../packages/physics
+      '@jump-king/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       colyseus:
         specifier: ^0.15.0
         version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.3(supports-color@7.2.0))(supports-color@7.2.0)
@@ -60,6 +66,9 @@ importers:
       '@jump-king/physics':
         specifier: workspace:*
         version: link:../../packages/physics
+      '@jump-king/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       colyseus.js:
         specifier: ^0.15.0
         version: 0.15.28
