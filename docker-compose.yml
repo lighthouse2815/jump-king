@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jumpking
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  game-server:
+    build:
+      context: .
+      dockerfile: apps/game-server/Dockerfile
+    ports:
+      - "2567:2567"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/jumpking
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

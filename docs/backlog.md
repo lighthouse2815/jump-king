@@ -30,5 +30,5 @@
 - [x] PostgreSQL integration
 - [x] Guest profile & progress
 
-## Phase 6: Polish (In Progress)
-- [ ] Artwork, FX, sound, optimization
+## Phase 6: Polish (Done)
+- [x] Artwork, FX, sound, optimization
