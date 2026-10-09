@@ -26,9 +26,9 @@
 - [x] Lobby creation & matching
 - [x] Match lifecycle & shared timer
 
-## Phase 5: Persistence (In Progress)
-- [ ] PostgreSQL integration
-- [ ] Guest profile & progress
+## Phase 5: Persistence (Done)
+- [x] PostgreSQL integration
+- [x] Guest profile & progress
 
-## Phase 6: Polish
+## Phase 6: Polish (In Progress)
 - [ ] Artwork, FX, sound, optimization
