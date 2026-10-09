@@ -1,1 +1,1 @@
-{"root":["./src/main.tsx","./src/game/Game.ts","./src/game/networking/NetworkManager.ts","./src/game/scenes/MainScene.ts"],"version":"5.9.3"}
+{"root":["./src/main.tsx","./src/game/Game.ts","./src/game/networking/NetworkManager.ts","./src/game/scenes/MainScene.ts","./src/game/scenes/RaceScene.ts","./src/pages/CommunityPage.tsx","./src/pages/LandingPage.tsx","./src/pages/RaceGamePage.tsx","./src/pages/RaceLobbyPage.tsx"],"version":"5.9.3"}

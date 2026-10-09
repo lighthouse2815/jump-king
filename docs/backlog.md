@@ -22,11 +22,11 @@
 - [x] Input protocol & server-authoritative physics
 - [x] Client prediction & reconciliation
 
-## Phase 4: Race Arena (In Progress)
-- [ ] Lobby creation & matching
-- [ ] Match lifecycle & shared timer
+## Phase 4: Race Arena (Done)
+- [x] Lobby creation & matching
+- [x] Match lifecycle & shared timer
 
-## Phase 5: Persistence
+## Phase 5: Persistence (In Progress)
 - [ ] PostgreSQL integration
 - [ ] Guest profile & progress
 
