@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MAP_1 } from '@jump-king/maps';
 import { PhysicsWorld, Body, PlayerController, GAME_CONFIG } from '@jump-king/physics';
 import { PlayerInputMessage, PlayerState } from '@jump-king/protocol';
 import { NetworkManager } from '../networking/NetworkManager';
@@ -18,6 +19,7 @@ export class MainScene extends Phaser.Scene {
   private keyD!: Phaser.Input.Keyboard.Key;
 
   private network!: NetworkManager;
+  private accumulator = 0;
   private inputSeq = 0;
 
   constructor() {
@@ -26,16 +28,9 @@ export class MainScene extends Phaser.Scene {
 
   async create() {
     this.physicsWorld = new PhysicsWorld();
+    MAP_1.forEach(p => this.createPlatform(p.x, p.y, p.w, p.h));
 
-    this.createPlatform(0, 580, 800, 20); // Ground
-    this.createPlatform(300, 450, 200, 20); // Platform 1
-    this.createPlatform(100, 300, 150, 20); // Platform 2
-    this.createPlatform(500, 150, 200, 20); // Platform 3
-    this.createPlatform(300, -50, 150, 20); // Platform 4
-    this.createPlatform(100, -250, 150, 20); // Platform 5
-    this.createPlatform(-20, -1000, 20, 1600); // Left wall
-    this.createPlatform(800, -1000, 20, 1600); // Right wall
-
+                                
     // Connect to server
     this.network = new NetworkManager();
     await this.network.connectToCommunityTower();
@@ -87,7 +82,7 @@ export class MainScene extends Phaser.Scene {
         sprite.setPosition(player.x + 10, player.y + 15);
         
         // Update charge color for remote
-        this.updateSpriteColor(sprite, player.chargeTime, false);
+        this.updateSpriteColor(sprite, player.chargeTicks, false);
       });
     }
   }
@@ -108,51 +103,52 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
-    const dt = delta / 1000;
-
     if (!this.localPlayerController || !this.network.room) return;
 
-    const input = {
-      left: this.cursors.left.isDown || this.keyA.isDown,
-      right: this.cursors.right.isDown || this.keyD.isDown,
-      jump: this.spaceKey.isDown,
-      seq: this.inputSeq++
-    };
+    this.accumulator += delta / 1000;
+    const TICK_RATE = 60;
+    const TICK_DT = 1 / TICK_RATE;
 
-    // Send input to server
-    this.network.sendInput(input);
+    while (this.accumulator >= TICK_DT) {
+      this.accumulator -= TICK_DT;
 
-    // Predict locally
-    this.localPlayerController.update(input, dt);
-    this.physicsWorld.step(dt);
+      const input = {
+        left: this.cursors.left.isDown || this.keyA.isDown,
+        right: this.cursors.right.isDown || this.keyD.isDown,
+        jump: this.spaceKey.isDown,
+        seq: this.inputSeq++
+      };
 
-    // Reconcile: we should ideally override localPlayerBody with server state,
-    // and re-apply pending inputs. But for simple MVP, we just trust local and let server override if distance is too big.
+      this.network.sendInput(input);
+      this.localPlayerController.tick(input);
+      this.physicsWorld.tick();
+    }
+
+    // Server reconciliation (simplified for now, runs after local ticks)
     const serverPlayer = this.network.room.state.players.get(this.network.sessionId);
     if (serverPlayer) {
       const dx = Math.abs(serverPlayer.x - this.localPlayerBody.position.x);
       const dy = Math.abs(serverPlayer.y - this.localPlayerBody.position.y);
       if (dx > 20 || dy > 20) {
-        // Snap back to server (Hard reconciliation)
         this.localPlayerBody.position.x = serverPlayer.x;
         this.localPlayerBody.position.y = serverPlayer.y;
       }
     }
 
-    // Update local sprite
+    // Update local sprite visually
     const sprite = this.playerSprites.get(this.network.sessionId);
     if (sprite) {
       sprite.setPosition(
         this.localPlayerBody.position.x + this.localPlayerBody.size.x / 2,
         this.localPlayerBody.position.y + this.localPlayerBody.size.y / 2
       );
-      this.updateSpriteColor(sprite, this.localPlayerController.chargeTime, true);
+      this.updateSpriteColor(sprite, this.localPlayerController.chargeTicks, true);
     }
   }
 
-  private updateSpriteColor(sprite: Phaser.GameObjects.Rectangle, chargeTime: number, isLocal: boolean) {
-    if (chargeTime > 0) {
-      const chargeRatio = chargeTime / GAME_CONFIG.maxChargeTime;
+  private updateSpriteColor(sprite: Phaser.GameObjects.Rectangle, chargeTicks: number, isLocal: boolean) {
+    if (chargeTicks > 0) {
+      const chargeRatio = chargeTicks / GAME_CONFIG.maxChargeTicks;
       const g = Math.floor(255 * chargeRatio);
       sprite.setFillStyle(isLocal ? ((0 << 16) | (g << 8) | 255) : ((255 << 16) | (g << 8) | 0));
     } else {

@@ -5,7 +5,7 @@ export class PlayerState extends Schema {
   @type("string") nickname: string = "";
   @type("number") x: number = 0;
   @type("number") y: number = 0;
-  @type("number") chargeTime: number = 0;
+  @type("int32") chargeTicks: number = 0;
   @type("int8") direction: number = 1;
   @type("boolean") isReady: boolean = false;
   @type("boolean") hasFinished: boolean = false;

@@ -2,6 +2,7 @@ import { db } from '../db';
 import { raceMatches, raceParticipants, users } from '../db/schema';
 import { Room, Client } from "@colyseus/core";
 import { GameState, PlayerState, PlayerInputMessage } from "@jump-king/protocol";
+import { MAP_1 } from '@jump-king/maps';
 import { PhysicsWorld, Body, PlayerController } from "@jump-king/physics";
 
 export class RaceRoom extends Room<GameState> {
@@ -20,18 +21,11 @@ export class RaceRoom extends Room<GameState> {
     this.setState(new GameState());
 
     this.physicsWorld = new PhysicsWorld();
+    MAP_1.forEach(p => this.createPlatform(p.x, p.y, p.w, p.h));
 
-    this.createPlatform(0, 580, 800, 20); // Ground
-    this.createPlatform(300, 450, 200, 20); // Platform 1
-    this.createPlatform(100, 300, 150, 20); // Platform 2
-    this.createPlatform(500, 150, 200, 20); // Platform 3
-    this.createPlatform(300, -50, 150, 20); // Platform 4
-    // Finish line platform
-    this.createPlatform(100, -250, 150, 20); // Finish platform
-
-    this.createPlatform(-20, -1000, 20, 1600); // Left wall
-    this.createPlatform(800, -1000, 20, 1600); // Right wall
-
+                        // Finish line platform
+    
+        
     this.onMessage("input", (client, input: PlayerInputMessage) => {
       if (this.state.status === "RUNNING") {
         this.inputs.set(client.sessionId, input);
@@ -124,10 +118,10 @@ export class RaceRoom extends Room<GameState> {
       if (player && player.hasFinished) return; // Stop simulating finished players
       
       const input = this.inputs.get(sessionId) || { left: false, right: false, jump: false, seq: 0 };
-      controller.update(input, dt);
+      controller.tick(input);
     });
 
-    this.physicsWorld.step(dt);
+    this.physicsWorld.tick();
 
     // Sync state and check win condition
     let allFinished = true;
@@ -143,7 +137,7 @@ export class RaceRoom extends Room<GameState> {
       if (body && controller) {
         player.x = body.position.x;
         player.y = body.position.y;
-        player.chargeTime = controller.chargeTime;
+        player.chargeTicks = controller.chargeTicks;
         player.direction = controller.direction;
 
         // Win condition: reach finish platform (y < -250)

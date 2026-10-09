@@ -1,5 +1,6 @@
 import { Room, Client } from "@colyseus/core";
 import { GameState, PlayerState, PlayerInputMessage } from "@jump-king/protocol";
+import { MAP_1 } from '@jump-king/maps';
 import { PhysicsWorld, Body, PlayerController } from "@jump-king/physics";
 
 export class CommunityRoom extends Room<GameState> {
@@ -19,17 +20,10 @@ export class CommunityRoom extends Room<GameState> {
     this.setState(new GameState());
 
     this.physicsWorld = new PhysicsWorld();
+    MAP_1.forEach(p => this.createPlatform(p.x, p.y, p.w, p.h));
 
     // Map: same as client for now
-    this.createPlatform(0, 580, 800, 20); // Ground
-    this.createPlatform(300, 450, 200, 20); // Platform 1
-    this.createPlatform(100, 300, 150, 20); // Platform 2
-    this.createPlatform(500, 150, 200, 20); // Platform 3
-    this.createPlatform(300, -50, 150, 20); // Platform 4
-    this.createPlatform(100, -250, 150, 20); // Platform 5
-    this.createPlatform(-20, -1000, 20, 1600); // Left wall
-    this.createPlatform(800, -1000, 20, 1600); // Right wall
-
+                                
     this.onMessage("input", (client, input: PlayerInputMessage) => {
       this.inputs.set(client.sessionId, input);
     });
@@ -81,10 +75,10 @@ export class CommunityRoom extends Room<GameState> {
     // Apply inputs & Physics step
     this.playerControllers.forEach((controller, sessionId) => {
       const input = this.inputs.get(sessionId) || { left: false, right: false, jump: false, seq: 0 };
-      controller.update(input, dt);
+      controller.tick(input);
     });
 
-    this.physicsWorld.step(dt);
+    this.physicsWorld.tick();
 
     // Sync state
     this.state.players.forEach((player, sessionId) => {
@@ -93,7 +87,7 @@ export class CommunityRoom extends Room<GameState> {
       if (body && controller) {
         player.x = body.position.x;
         player.y = body.position.y;
-        player.chargeTime = controller.chargeTime;
+        player.chargeTicks = controller.chargeTicks;
         player.direction = controller.direction;
       }
     });
