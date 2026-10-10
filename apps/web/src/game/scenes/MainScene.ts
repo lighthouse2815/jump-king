@@ -155,8 +155,12 @@ export class MainScene extends Phaser.Scene {
         // 1. Snap to server state
         this.localPlayerBody.position.x = serverPlayer.x;
         this.localPlayerBody.position.y = serverPlayer.y;
+        this.localPlayerBody.velocity.x = serverPlayer.velX;
+        this.localPlayerBody.velocity.y = serverPlayer.velY;
         this.localPlayerController.chargeTicks = serverPlayer.chargeTicks;
         this.localPlayerController.direction = serverPlayer.direction as (1 | -1);
+        this.localPlayerBody.isGrounded = serverPlayer.isGrounded;
+        this.localPlayerController.prevJump = serverPlayer.prevJump;
 
         // 2. Replay pending inputs
         // Note: this effectively fast-forwards physics for the local player
