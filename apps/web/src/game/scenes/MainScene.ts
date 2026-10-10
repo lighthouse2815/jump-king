@@ -143,6 +143,11 @@ export class MainScene extends Phaser.Scene {
 
       // Simple positional divergence check to trigger reconciliation
       const dx = Math.abs(serverPlayer.x - this.localPlayerBody.position.x);
+      (window as any).debugRecon = (window as any).debugRecon || 0;
+      if ((window as any).debugRecon++ % 60 === 0) {
+        console.log("SERVER: ", serverPlayer.x, serverPlayer.y, serverPlayer.chargeTicks, serverPlayer.lastProcessedInputSeq);
+        console.log("CLIENT BEFORE RECON: ", this.localPlayerBody.position.x, this.localPlayerBody.position.y, this.localPlayerController.chargeTicks, "pending length:", this.pendingInputs.length);
+      }
       const dy = Math.abs(serverPlayer.y - this.localPlayerBody.position.y);
       
       // If server and client deviate too much, we reconcile
@@ -164,19 +169,7 @@ export class MainScene extends Phaser.Scene {
         // or just apply manual integration. We'll use the main world but ONLY integrate our body.
         for (const pendingInput of this.pendingInputs) {
            this.localPlayerController.tick(pendingInput);
-           // Manually step our local player body instead of the whole world
-           this.localPlayerBody.velocity.y += this.physicsWorld.gravity * TICK_DT;
-           this.localPlayerBody.isGrounded = false;
-           
-           let collX = false; let collY = false;
-           for (let i = 0; i < 4; i++) {
-             this.localPlayerBody.position.x += this.localPlayerBody.velocity.x * (TICK_DT / 4);
-             if (this.physicsWorld['resolveCollisions'](this.localPlayerBody, this.physicsWorld.bodies.filter(b => b.isStatic), 'x')) collX = true;
-             this.localPlayerBody.position.y += this.localPlayerBody.velocity.y * (TICK_DT / 4);
-             if (this.physicsWorld['resolveCollisions'](this.localPlayerBody, this.physicsWorld.bodies.filter(b => b.isStatic), 'y')) collY = true;
-           }
-           if (collX) this.localPlayerBody.velocity.x = 0;
-           if (collY) this.localPlayerBody.velocity.y = 0;
+           this.physicsWorld.tickBody(this.localPlayerBody);
         }
       }
     }

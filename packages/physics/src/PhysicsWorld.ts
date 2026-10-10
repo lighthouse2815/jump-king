@@ -19,32 +19,40 @@ export class PhysicsWorld {
     const staticBodies = this.bodies.filter(b => b.isStatic);
 
     for (const body of dynamicBodies) {
-      // Apply gravity once per tick
-      body.velocity.y += this.gravity * TICK_DT;
+      this.tickBody(body, staticBodies);
+    }
+  }
 
-      // We do sub-stepping to prevent tunneling
-      body.isGrounded = false;
-      
-      let collidedX = false;
-      let collidedY = false;
+  tickBody(body: Body, staticBodies?: Body[]) {
+    if (!staticBodies) {
+      staticBodies = this.bodies.filter(b => b.isStatic);
+    }
+    
+    // Apply gravity once per tick
+    body.velocity.y += this.gravity * TICK_DT;
 
-      for (let i = 0; i < SUB_STEPS; i++) {
-        // Integrate X
-        body.position.x += body.velocity.x * SUB_DT;
-        if (this.resolveCollisions(body, staticBodies, 'x')) {
-          collidedX = true;
-        }
+    // We do sub-stepping to prevent tunneling
+    body.isGrounded = false;
+    
+    let collidedX = false;
+    let collidedY = false;
 
-        // Integrate Y
-        body.position.y += body.velocity.y * SUB_DT;
-        if (this.resolveCollisions(body, staticBodies, 'y')) {
-          collidedY = true;
-        }
+    for (let i = 0; i < SUB_STEPS; i++) {
+      // Integrate X
+      body.position.x += body.velocity.x * SUB_DT;
+      if (this.resolveCollisions(body, staticBodies, 'x')) {
+        collidedX = true;
       }
 
-      if (collidedX) body.velocity.x = 0;
-      if (collidedY) body.velocity.y = 0;
+      // Integrate Y
+      body.position.y += body.velocity.y * SUB_DT;
+      if (this.resolveCollisions(body, staticBodies, 'y')) {
+        collidedY = true;
+      }
     }
+
+    if (collidedX) body.velocity.x = 0;
+    if (collidedY) body.velocity.y = 0;
   }
 
   public resolveCollisions(body: Body, staticBodies: Body[], axis: 'x' | 'y'): boolean {

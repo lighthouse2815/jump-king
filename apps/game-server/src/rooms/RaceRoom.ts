@@ -11,7 +11,7 @@ export class RaceRoom extends Room<GameState> {
   
   private playerBodies = new Map<string, Body>();
   private playerControllers = new Map<string, PlayerController>();
-  private inputs = new Map<string, PlayerInputMessage>();
+  private inputQueues = new Map<string, PlayerInputMessage[]>();
   private participants = new Map<string, { nickname: string, hasFinished: boolean, finishTime: number | null, maxHeight: number }>();
   private resultsSaved = false;
 
@@ -25,9 +25,6 @@ export class RaceRoom extends Room<GameState> {
     this.physicsWorld = new PhysicsWorld();
     MAP_1.forEach(p => this.createPlatform(p.x, p.y, p.w, p.h));
 
-                        // Finish line platform
-    
-        
     this.onMessage("input", (client, input: any) => {
       if (typeof input !== 'object' || input === null) return;
       if (typeof input.left !== 'boolean' || typeof input.right !== 'boolean' || typeof input.jump !== 'boolean' || typeof input.seq !== 'number') return;
@@ -35,12 +32,19 @@ export class RaceRoom extends Room<GameState> {
       const player = this.state.players.get(client.sessionId);
       if (player?.hasFinished) return;
       
-      this.inputs.set(client.sessionId, {
-        left: input.left,
-        right: input.right,
-        jump: input.jump,
-        seq: input.seq
-      });
+      let queue = this.inputQueues.get(client.sessionId);
+      if (!queue) {
+        queue = [];
+        this.inputQueues.set(client.sessionId, queue);
+      }
+      if (queue.length < 60) {
+        queue.push({
+          left: input.left,
+          right: input.right,
+          jump: input.jump,
+          seq: input.seq
+        });
+      }
     });
 
     this.onMessage("ready", (client, isReady: any) => {
@@ -113,6 +117,7 @@ export class RaceRoom extends Room<GameState> {
     this.physicsWorld.addBody(body);
     this.playerBodies.set(client.sessionId, body);
     this.playerControllers.set(client.sessionId, new PlayerController(body));
+    this.inputQueues.set(client.sessionId, []);
   }
 
   onLeave(client: Client, consented: boolean) {
@@ -122,7 +127,7 @@ export class RaceRoom extends Room<GameState> {
       this.physicsWorld.bodies = this.physicsWorld.bodies.filter(b => b !== body);
       this.playerBodies.delete(client.sessionId);
       this.playerControllers.delete(client.sessionId);
-      this.inputs.delete(client.sessionId);
+      this.inputQueues.delete(client.sessionId);
     }
   }
 
@@ -135,11 +140,25 @@ export class RaceRoom extends Room<GameState> {
       const player = this.state.players.get(sessionId);
       if (player && player.hasFinished) return; // Stop simulating finished players
       
-      const input = this.inputs.get(sessionId) || { left: false, right: false, jump: false, seq: 0 };
-      controller.tick(input);
+      const queue = this.inputQueues.get(sessionId) || [];
+      const body = this.playerBodies.get(sessionId);
+      
+      if (queue.length === 0) {
+        controller.tick({ left: false, right: false, jump: false, seq: 0 });
+        if (body) this.physicsWorld.tickBody(body);
+      } else {
+        while (queue.length > 0) {
+          const input = queue.shift()!;
+          controller.tick(input);
+          if (body) {
+            this.physicsWorld.tickBody(body);
+          }
+          if (player) {
+            player.lastProcessedInputSeq = input.seq;
+          }
+        }
+      }
     });
-
-    this.physicsWorld.tick();
 
     // Sync state and check win condition
     let allFinished = true;
@@ -156,8 +175,6 @@ export class RaceRoom extends Room<GameState> {
         player.x = body.position.x;
         player.y = body.position.y;
         player.chargeTicks = controller.chargeTicks;
-        const input = this.inputs.get(sessionId);
-        if (input) player.lastProcessedInputSeq = input.seq;
         player.direction = controller.direction;
 
         // Win condition: reach finish platform (y < -250)

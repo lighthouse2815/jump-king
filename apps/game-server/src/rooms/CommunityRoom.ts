@@ -10,7 +10,7 @@ export class CommunityRoom extends Room<GameState> {
   // We need to map Colyseus clients to our Physics Engine bodies
   private playerBodies = new Map<string, Body>();
   private playerControllers = new Map<string, PlayerController>();
-  private inputs = new Map<string, PlayerInputMessage>();
+  private inputQueues = new Map<string, PlayerInputMessage[]>();
 
   // Simulation tick rate
   private fixedTimeStep = 1000 / 60;
@@ -31,12 +31,20 @@ export class CommunityRoom extends Room<GameState> {
         return;
       }
       
-      this.inputs.set(client.sessionId, {
-        left: input.left,
-        right: input.right,
-        jump: input.jump,
-        seq: input.seq
-      });
+      let queue = this.inputQueues.get(client.sessionId);
+      if (!queue) {
+        queue = [];
+        this.inputQueues.set(client.sessionId, queue);
+      }
+      // Bound the queue size to prevent memory leaks / malicious flooding
+      if (queue.length < 60) {
+        queue.push({
+          left: input.left,
+          right: input.right,
+          jump: input.jump,
+          seq: input.seq
+        });
+      }
     });
 
     this.setSimulationInterval((deltaTime) => this.update(deltaTime), this.fixedTimeStep);
@@ -64,6 +72,7 @@ export class CommunityRoom extends Room<GameState> {
     this.physicsWorld.addBody(body);
     this.playerBodies.set(client.sessionId, body);
     this.playerControllers.set(client.sessionId, new PlayerController(body));
+    this.inputQueues.set(client.sessionId, []);
   }
 
   onLeave(client: Client, consented: boolean) {
@@ -76,7 +85,7 @@ export class CommunityRoom extends Room<GameState> {
       this.physicsWorld.bodies = this.physicsWorld.bodies.filter(b => b !== body);
       this.playerBodies.delete(client.sessionId);
       this.playerControllers.delete(client.sessionId);
-      this.inputs.delete(client.sessionId);
+      this.inputQueues.delete(client.sessionId);
     }
   }
 
@@ -85,11 +94,35 @@ export class CommunityRoom extends Room<GameState> {
 
     // Apply inputs & Physics step
     this.playerControllers.forEach((controller, sessionId) => {
-      const input = this.inputs.get(sessionId) || { left: false, right: false, jump: false, seq: 0 };
-      controller.tick(input);
+      const queue = this.inputQueues.get(sessionId) || [];
+      const body = this.playerBodies.get(sessionId);
+      
+      if (queue.length === 0) {
+        // No input this tick, simulate with a neutral/last input if desired, 
+        // but for deterministic platformers, we just don't tick or use a zero input.
+        // Let's use a zero input.
+        controller.tick({ left: false, right: false, jump: false, seq: 0 });
+        if (body) this.physicsWorld.tickBody(body);
+      } else {
+        // Process all pending inputs for this player
+        while (queue.length > 0) {
+          const input = queue.shift()!;
+          controller.tick(input);
+          if (body) {
+            this.physicsWorld.tickBody(body);
+          }
+          // Update the player's last processed seq
+          const playerState = this.state.players.get(sessionId);
+          if (playerState) {
+            playerState.lastProcessedInputSeq = input.seq;
+          }
+        }
+      }
     });
 
-    this.physicsWorld.tick();
+    // We no longer call this.physicsWorld.tick() for all bodies at once,
+    // because we integrated them per-input above. 
+    // If there were NPCs, we would tick them here.
 
     // Sync state
     this.state.players.forEach((player, sessionId) => {
@@ -99,8 +132,6 @@ export class CommunityRoom extends Room<GameState> {
         player.x = body.position.x;
         player.y = body.position.y;
         player.chargeTicks = controller.chargeTicks;
-        const input = this.inputs.get(sessionId);
-        if (input) player.lastProcessedInputSeq = input.seq;
         player.direction = controller.direction;
       }
     });

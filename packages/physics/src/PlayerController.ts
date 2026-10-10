@@ -5,6 +5,7 @@ export interface PlayerInput {
   left: boolean;
   right: boolean;
   jump: boolean; // true when held
+  seq?: number;
 }
 
 export const GAME_CONFIG = {
