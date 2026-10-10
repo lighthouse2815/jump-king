@@ -1,5 +1,6 @@
 import { db } from '../db';
 import { raceMatches, raceParticipants, users } from '../db/schema';
+import { eq } from 'drizzle-orm';
 import { Room, Client } from "@colyseus/core";
 import { GameState, PlayerState, PlayerInputMessage } from "@jump-king/protocol";
 import { MAP_1 } from '@jump-king/maps';
@@ -13,7 +14,7 @@ export class RaceRoom extends Room<GameState> {
   private playerControllers = new Map<string, PlayerController>();
   private inputQueues = new Map<string, PlayerInputMessage[]>();
   private lastInputs = new Map<string, PlayerInputMessage>();
-  private participants = new Map<string, { nickname: string, hasFinished: boolean, finishTime: number | null, maxHeight: number }>();
+  private participants = new Map<string, { nickname: string, userId: string, hasFinished: boolean, finishTime: number | null, maxHeight: number }>();
   private resultsSaved = false;
 
   private fixedTimeStep = 1000 / 60;
@@ -38,14 +39,15 @@ export class RaceRoom extends Room<GameState> {
         queue = [];
         this.inputQueues.set(client.sessionId, queue);
       }
-      if (queue.length < 60) {
-        queue.push({
-          left: input.left,
-          right: input.right,
-          jump: input.jump,
-          seq: input.seq
-        });
+      if (queue.length > 5) {
+        queue.splice(0, queue.length - 5);
       }
+      queue.push({
+        left: input.left,
+        right: input.right,
+        jump: input.jump,
+        seq: input.seq
+      });
     });
 
     this.onMessage("ready", (client, isReady: any) => {
@@ -109,6 +111,7 @@ export class RaceRoom extends Room<GameState> {
     this.state.players.set(client.sessionId, player);
     this.participants.set(client.sessionId, {
       nickname: player.nickname,
+      userId: options.userId || 'unknown',
       hasFinished: false,
       finishTime: null,
       maxHeight: 0
@@ -145,24 +148,21 @@ export class RaceRoom extends Room<GameState> {
       const queue = this.inputQueues.get(sessionId) || [];
       const body = this.playerBodies.get(sessionId);
       
+      let rawInput;
       if (queue.length === 0) {
-        const lastInput = this.lastInputs.get(sessionId) || { left: false, right: false, jump: false, seq: 0 };
-        const input = isRunning ? lastInput : { ...lastInput, left: false, right: false, jump: false };
-        controller.tick(input);
-        if (body) this.physicsWorld.tickBody(body);
+        rawInput = this.lastInputs.get(sessionId) || { left: false, right: false, jump: false, seq: 0 };
       } else {
-        while (queue.length > 0) {
-          const rawInput = queue.shift()!;
-          this.lastInputs.set(sessionId, rawInput);
-          const input = isRunning ? rawInput : { ...rawInput, left: false, right: false, jump: false };
-          controller.tick(input);
-          if (body) {
-            this.physicsWorld.tickBody(body);
-          }
-          if (player) {
-            player.lastProcessedInputSeq = input.seq;
-          }
+        rawInput = queue.shift()!;
+        this.lastInputs.set(sessionId, rawInput);
+        if (player) {
+          player.lastProcessedInputSeq = rawInput.seq;
         }
+      }
+
+      const input = isRunning ? rawInput : { ...rawInput, left: false, right: false, jump: false };
+      controller.tick(input);
+      if (body) {
+        this.physicsWorld.tickBody(body);
       }
     });
 
@@ -180,6 +180,10 @@ export class RaceRoom extends Room<GameState> {
       if (body && controller) {
         player.x = body.position.x;
         player.y = body.position.y;
+        player.velX = body.velocity.x;
+        player.velY = body.velocity.y;
+        player.isGrounded = body.isGrounded;
+        player.prevJump = controller.prevJump;
         player.chargeTicks = controller.chargeTicks;
         player.direction = controller.direction;
 
@@ -210,39 +214,62 @@ export class RaceRoom extends Room<GameState> {
     }
   }
 
-  async saveResults() {
+  async saveResults(retries = 3) {
     if (this.resultsSaved) return;
-    this.resultsSaved = true;
+    this.resultsSaved = true; // Mark eagerly so we don't try concurrently
     console.log("Saving race results for room", this.roomId);
     
-    try {
-      const match = await db.insert(raceMatches).values({
-        roomCode: this.roomId,
-        status: this.state.status,
-      }).returning();
-      
-      const matchId = match[0].id;
-      
-      for (const [sessionId, p] of this.participants.entries()) {
-        let userResult = await db.query.users.findFirst({
-          where: (users, { eq }) => eq(users.nickname, p.nickname)
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        await db.transaction(async (tx) => {
+          // Check idempotency
+          const existingMatch = await tx.query.raceMatches.findFirst({
+            where: eq(raceMatches.roomCode, this.roomId)
+          });
+          
+          let matchId;
+          
+          if (existingMatch) {
+            matchId = existingMatch.id;
+            return; // Already inserted previously (idempotent)
+          } else {
+            const match = await tx.insert(raceMatches).values({
+              roomCode: this.roomId,
+              status: this.state.status,
+            }).returning();
+            matchId = match[0].id;
+          }
+          
+          for (const [sessionId, p] of this.participants.entries()) {
+            let userResult = await tx.query.users.findFirst({
+              where: eq(users.id, p.userId)
+            });
+            
+            if (!userResult) {
+              const inserted = await tx.insert(users).values({ id: p.userId, nickname: p.nickname }).returning();
+              userResult = inserted[0];
+            }
+            
+            await tx.insert(raceParticipants).values({
+              matchId,
+              userId: userResult.id,
+              finishTime: p.hasFinished ? p.finishTime : null,
+              maxHeight: p.maxHeight,
+            });
+          }
         });
         
-        if (!userResult) {
-          const inserted = await db.insert(users).values({ nickname: p.nickname }).returning();
-          userResult = inserted[0];
+        console.log("Race results saved successfully.");
+        return; // Success, exit loop
+      } catch (e) {
+        console.error(`Failed to save match (attempt ${attempt}/${retries})`, e);
+        if (attempt === retries) {
+          console.error("Giving up saving results.");
+          this.resultsSaved = false; // Allow retrying manually later if needed
+        } else {
+          await new Promise(res => setTimeout(res, 1000 * attempt));
         }
-        
-        await db.insert(raceParticipants).values({
-          matchId,
-          userId: userResult.id,
-          finishTime: p.hasFinished ? p.finishTime : null,
-          maxHeight: p.maxHeight,
-        });
       }
-      console.log("Race results saved successfully.");
-    } catch (e) {
-      console.error('Failed to save match', e);
     }
   }
 

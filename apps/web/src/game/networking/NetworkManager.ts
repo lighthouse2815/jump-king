@@ -17,9 +17,18 @@ export class NetworkManager {
     this.client = new Colyseus.Client(endpoint);
   }
 
+  private getUserId() {
+    let userId = localStorage.getItem('userId');
+    if (!userId) {
+      userId = crypto.randomUUID();
+      localStorage.setItem('userId', userId);
+    }
+    return userId;
+  }
+
   async connectToCommunityTower() {
     try {
-      this.room = await this.client.joinOrCreate<GameState>('community_tower', { nickname: 'Player' });
+      this.room = await this.client.joinOrCreate<GameState>('community_tower', { nickname: 'Player', userId: this.getUserId() });
       this.sessionId = this.room.sessionId;
       console.log('Joined community tower, sessionId:', this.sessionId);
     } catch (e) {
@@ -29,7 +38,7 @@ export class NetworkManager {
 
   async createRaceRoom() {
     try {
-      this.room = await this.client.create<GameState>('race_arena', { nickname: 'Host' });
+      this.room = await this.client.create<GameState>('race_arena', { nickname: 'Host', userId: this.getUserId() });
       this.sessionId = this.room.sessionId;
       return this.room.id;
     } catch (e) {
@@ -40,7 +49,7 @@ export class NetworkManager {
 
   async joinRaceRoom(roomId: string) {
     try {
-      this.room = await this.client.joinById<GameState>(roomId, { nickname: 'Challenger' });
+      this.room = await this.client.joinById<GameState>(roomId, { nickname: 'Challenger', userId: this.getUserId() });
       this.sessionId = this.room.sessionId;
       return true;
     } catch (e) {
