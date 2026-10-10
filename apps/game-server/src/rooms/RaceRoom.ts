@@ -12,6 +12,7 @@ export class RaceRoom extends Room<GameState> {
   private playerBodies = new Map<string, Body>();
   private playerControllers = new Map<string, PlayerController>();
   private inputQueues = new Map<string, PlayerInputMessage[]>();
+  private lastInputs = new Map<string, PlayerInputMessage>();
   private participants = new Map<string, { nickname: string, hasFinished: boolean, finishTime: number | null, maxHeight: number }>();
   private resultsSaved = false;
 
@@ -28,7 +29,7 @@ export class RaceRoom extends Room<GameState> {
     this.onMessage("input", (client, input: any) => {
       if (typeof input !== 'object' || input === null) return;
       if (typeof input.left !== 'boolean' || typeof input.right !== 'boolean' || typeof input.jump !== 'boolean' || typeof input.seq !== 'number') return;
-      if (this.state.status !== "RUNNING") return;
+      
       const player = this.state.players.get(client.sessionId);
       if (player?.hasFinished) return;
       
@@ -128,27 +129,32 @@ export class RaceRoom extends Room<GameState> {
       this.playerBodies.delete(client.sessionId);
       this.playerControllers.delete(client.sessionId);
       this.inputQueues.delete(client.sessionId);
+      this.lastInputs.delete(client.sessionId);
     }
   }
 
   update(deltaTime: number) {
-    if (this.state.status !== "RUNNING") return;
-
     const dt = this.fixedTimeStep / 1000;
+    const isRunning = this.state.status === "RUNNING";
 
     this.playerControllers.forEach((controller, sessionId) => {
       const player = this.state.players.get(sessionId);
       if (player && player.hasFinished) return; // Stop simulating finished players
+
       
       const queue = this.inputQueues.get(sessionId) || [];
       const body = this.playerBodies.get(sessionId);
       
       if (queue.length === 0) {
-        controller.tick({ left: false, right: false, jump: false, seq: 0 });
+        const lastInput = this.lastInputs.get(sessionId) || { left: false, right: false, jump: false, seq: 0 };
+        const input = isRunning ? lastInput : { ...lastInput, left: false, right: false, jump: false };
+        controller.tick(input);
         if (body) this.physicsWorld.tickBody(body);
       } else {
         while (queue.length > 0) {
-          const input = queue.shift()!;
+          const rawInput = queue.shift()!;
+          this.lastInputs.set(sessionId, rawInput);
+          const input = isRunning ? rawInput : { ...rawInput, left: false, right: false, jump: false };
           controller.tick(input);
           if (body) {
             this.physicsWorld.tickBody(body);

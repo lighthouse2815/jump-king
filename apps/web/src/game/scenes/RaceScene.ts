@@ -4,6 +4,8 @@ import { PhysicsWorld, Body, PlayerController, GAME_CONFIG } from '@jump-king/ph
 import { PlayerInputMessage, PlayerState } from '@jump-king/protocol';
 import { networkManager } from '../networking/NetworkManager';
 
+import { preloadAssets } from '../utils/preloadAssets';
+
 export class RaceScene extends Phaser.Scene {
   private physicsWorld!: PhysicsWorld;
   private localPlayerBody!: Body;
@@ -29,6 +31,10 @@ export class RaceScene extends Phaser.Scene {
 
   constructor() {
     super({ key: 'RaceScene' });
+  }
+
+  preload() {
+    preloadAssets(this);
   }
 
   setRoomId(id: string, setUiState: (state: any) => void) {

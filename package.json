@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter web run dev & pnpm --filter game-server run dev",
+    "dev": "pnpm -r run build && pnpm --filter web run dev & pnpm --filter game-server run dev",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint"

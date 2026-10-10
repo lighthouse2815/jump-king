@@ -9,7 +9,8 @@ A server-authoritative multiplayer 2D precision platformer inspired by Jump King
 
 ## How to run
 1. \`pnpm install\`
-2. \`docker-compose up -d db\`
-3. \`pnpm run dev\`
+2. \`pnpm run build\`
+3. \`docker-compose up -d db\`
+4. \`pnpm run dev\`
 
 Visit \`http://localhost:3000\`

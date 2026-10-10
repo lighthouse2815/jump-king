@@ -11,6 +11,7 @@ export class CommunityRoom extends Room<GameState> {
   private playerBodies = new Map<string, Body>();
   private playerControllers = new Map<string, PlayerController>();
   private inputQueues = new Map<string, PlayerInputMessage[]>();
+  private lastInputs = new Map<string, PlayerInputMessage>();
 
   // Simulation tick rate
   private fixedTimeStep = 1000 / 60;
@@ -86,6 +87,7 @@ export class CommunityRoom extends Room<GameState> {
       this.playerBodies.delete(client.sessionId);
       this.playerControllers.delete(client.sessionId);
       this.inputQueues.delete(client.sessionId);
+      this.lastInputs.delete(client.sessionId);
     }
   }
 
@@ -98,15 +100,15 @@ export class CommunityRoom extends Room<GameState> {
       const body = this.playerBodies.get(sessionId);
       
       if (queue.length === 0) {
-        // No input this tick, simulate with a neutral/last input if desired, 
-        // but for deterministic platformers, we just don't tick or use a zero input.
-        // Let's use a zero input.
-        controller.tick({ left: false, right: false, jump: false, seq: 0 });
+        // Queue empty due to jitter. Duplicate last input to prevent dropping charge state.
+        const lastInput = this.lastInputs.get(sessionId) || { left: false, right: false, jump: false, seq: 0 };
+        controller.tick(lastInput);
         if (body) this.physicsWorld.tickBody(body);
       } else {
         // Process all pending inputs for this player
         while (queue.length > 0) {
           const input = queue.shift()!;
+          this.lastInputs.set(sessionId, input);
           controller.tick(input);
           if (body) {
             this.physicsWorld.tickBody(body);

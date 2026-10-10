@@ -7,7 +7,14 @@ export class NetworkManager {
   public sessionId: string = '';
 
   constructor() {
-    this.client = new Colyseus.Client('ws://localhost:2567');
+    let endpoint = import.meta.env.VITE_SERVER_URL;
+    if (!endpoint) {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.hostname;
+      const port = host === 'localhost' ? ':2567' : (window.location.port ? ':' + window.location.port : '');
+      endpoint = `${protocol}//${host}${port}`;
+    }
+    this.client = new Colyseus.Client(endpoint);
   }
 
   async connectToCommunityTower() {

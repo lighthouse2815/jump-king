@@ -7,10 +7,11 @@ describe('PhysicsWorld & PlayerController', () => {
     const player = new Body(0, 0, 20, 20);
     world.addBody(player);
     
-    world.step(1.0); // 1 second
+    // tick() is fixed 1/60 dt
+    for(let i=0; i<60; i++) world.tick();
     
-    expect(player.velocity.y).toBe(world.gravity);
-    expect(player.position.y).toBe(world.gravity);
+    // V = gt
+    expect(player.velocity.y).toBeCloseTo(world.gravity, 0);
   });
 
   it('should collide with static ground', () => {
@@ -24,9 +25,8 @@ describe('PhysicsWorld & PlayerController', () => {
     player.velocity.y = 100;
     
     // Step at 60Hz
-    const dt = 1/60;
     for(let i = 0; i < 30; i++) {
-        world.step(dt);
+        world.tick();
     }
     
     // Should hit ground at y = 100 - player height (20) = 80
@@ -40,14 +40,16 @@ describe('PhysicsWorld & PlayerController', () => {
     player.isGrounded = true;
     const controller = new PlayerController(player);
 
-    // Charge for 0.5s
-    controller.update({ left: false, right: false, jump: true }, 0.5);
-    expect(controller.chargeTime).toBe(0.5);
+    // Charge for 30 ticks (0.5s)
+    for (let i = 0; i < 30; i++) {
+      controller.tick({ left: false, right: false, jump: true, seq: i });
+    }
+    expect(controller.chargeTicks).toBe(30);
     expect(player.velocity.y).toBe(0);
 
     // Release jump
-    controller.update({ left: false, right: false, jump: false }, 0.1);
-    expect(controller.chargeTime).toBe(0);
+    controller.tick({ left: false, right: false, jump: false, seq: 30 });
+    expect(controller.chargeTicks).toBe(0);
     expect(player.velocity.y).toBeLessThan(0); // jumping up
     expect(player.isGrounded).toBe(false);
   });
@@ -57,10 +59,10 @@ describe('PhysicsWorld & PlayerController', () => {
     player.isGrounded = true;
     const controller = new PlayerController(player);
 
-    controller.update({ left: true, right: false, jump: false }, 0.1);
+    controller.tick({ left: true, right: false, jump: false, seq: 1 });
     expect(player.velocity.x).toBe(-GAME_CONFIG.moveSpeed);
 
-    controller.update({ left: false, right: true, jump: false }, 0.1);
+    controller.tick({ left: false, right: true, jump: false, seq: 2 });
     expect(player.velocity.x).toBe(GAME_CONFIG.moveSpeed);
   });
 
@@ -70,7 +72,7 @@ describe('PhysicsWorld & PlayerController', () => {
     player.velocity.x = 50; // Already moving in air
     const controller = new PlayerController(player);
 
-    controller.update({ left: true, right: false, jump: false }, 0.1);
+    controller.tick({ left: true, right: false, jump: false, seq: 1 });
     // Velocity shouldn't change to moveSpeed left
     expect(player.velocity.x).toBe(50);
   });

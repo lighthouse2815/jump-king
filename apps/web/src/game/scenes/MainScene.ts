@@ -4,6 +4,8 @@ import { PhysicsWorld, Body, PlayerController, GAME_CONFIG } from '@jump-king/ph
 import { PlayerInputMessage, PlayerState } from '@jump-king/protocol';
 import { networkManager } from '../networking/NetworkManager';
 
+import { preloadAssets } from '../utils/preloadAssets';
+
 export class MainScene extends Phaser.Scene {
   private physicsWorld!: PhysicsWorld;
   private localPlayerBody!: Body;
@@ -28,11 +30,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('player_idle', '/assets/player_idle.svg');
-    this.load.image('player_jump', '/assets/player_jump.svg');
-    this.load.image('platform', '/assets/platform.svg');
-    this.load.image('finish', '/assets/finish.svg');
-    this.load.image('bg', '/assets/bg.svg');
+    preloadAssets(this);
   }
 
   async create() {
