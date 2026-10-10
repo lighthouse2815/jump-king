@@ -9,7 +9,8 @@ export class RaceScene extends Phaser.Scene {
   private localPlayerBody!: Body;
   private localPlayerController!: PlayerController;
   
-  private playerSprites = new Map<string, Phaser.GameObjects.Rectangle>();
+  private playerSprites = new Map<string, Phaser.GameObjects.Sprite>();
+  private platforms: Phaser.GameObjects.TileSprite[] = [];
   
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private spaceKey!: Phaser.Input.Keyboard.Key;
@@ -85,7 +86,13 @@ export class RaceScene extends Phaser.Scene {
 
   create() {
     this.physicsWorld = new PhysicsWorld();
-    MAP_1.forEach(p => this.createPlatform(p.x, p.y, p.w, p.h));
+    
+    this.add.tileSprite(400, -200, 800, 3000, 'bg').setScrollFactor(0.2, 0.2);
+    
+    MAP_1.forEach(p => {
+      const isFinish = p.y === -250 && p.w === 150;
+      this.createPlatform(p.x, p.y, p.w, p.h, isFinish);
+    });
 
                         
         
@@ -100,13 +107,7 @@ export class RaceScene extends Phaser.Scene {
   private onPlayerAdd(player: PlayerState, sessionId: string) {
     const isLocal = sessionId === this.network.sessionId;
     
-    const sprite = this.add.rectangle(
-      player.x + 10,
-      player.y + 15,
-      20,
-      30,
-      isLocal ? 0x00ffff : 0xff0000
-    );
+    const sprite = this.add.sprite(player.x + 10, player.y + 15, 'player_idle');
     this.playerSprites.set(sessionId, sprite);
 
     if (isLocal) {
@@ -120,7 +121,7 @@ export class RaceScene extends Phaser.Scene {
     } else {
       player.onChange(() => {
         sprite.setPosition(player.x + 10, player.y + 15);
-        this.updateSpriteColor(sprite, player.chargeTicks, false);
+        this.updateSpriteState(sprite, player.chargeTicks, player.y, player.direction, false);
       });
     }
   }
@@ -133,10 +134,12 @@ export class RaceScene extends Phaser.Scene {
     }
   }
 
-  private createPlatform(x: number, y: number, w: number, h: number, color: number = 0x888888) {
+  private createPlatform(x: number, y: number, w: number, h: number, isFinish: boolean = false) {
     const body = new Body(x, y, w, h, true);
     this.physicsWorld.addBody(body);
-    this.add.rectangle(x + w/2, y + h/2, w, h, color);
+    const tex = isFinish ? 'finish' : 'platform';
+    const visual = this.add.tileSprite(x + w/2, y + h/2, w, h, tex);
+    this.platforms.push(visual);
   }
 
   update(time: number, delta: number) {
@@ -215,18 +218,27 @@ export class RaceScene extends Phaser.Scene {
         this.localPlayerBody.position.x + this.localPlayerBody.size.x / 2,
         this.localPlayerBody.position.y + this.localPlayerBody.size.y / 2
       );
-      this.updateSpriteColor(sprite, this.localPlayerController.chargeTicks, true);
+      this.updateSpriteState(sprite, this.localPlayerController.chargeTicks, this.localPlayerBody.position.y, this.localPlayerController.direction, true);
     }
 
   }
 
-  private updateSpriteColor(sprite: Phaser.GameObjects.Rectangle, chargeTicks: number, isLocal: boolean) {
+  private updateSpriteState(sprite: Phaser.GameObjects.Sprite, chargeTicks: number, y: number, dir: number, isLocal: boolean) {
+    sprite.setFlipX(dir === -1);
+    
     if (chargeTicks > 0) {
-      const chargeRatio = chargeTicks / GAME_CONFIG.maxChargeTicks;
-      const g = Math.floor(255 * chargeRatio);
-      sprite.setFillStyle(isLocal ? ((0 << 16) | (g << 8) | 255) : ((255 << 16) | (g << 8) | 0));
+      sprite.setTexture('player_jump');
+      const chargeRatio = chargeTicks / 60; // GAME_CONFIG.maxChargeTicks
+      const g = Math.floor(255 * (1 - chargeRatio));
+      const r = isLocal ? 0 : 255;
+      const b = isLocal ? 255 : 0;
+      sprite.setTint((r << 16) | (g << 8) | b);
     } else {
-      sprite.setFillStyle(isLocal ? 0x00ffff : 0xff0000);
+      sprite.setTexture('player_idle');
+      sprite.clearTint();
+      if (!isLocal) {
+        sprite.setTint(0xffaaaa);
+      }
     }
   }
 }

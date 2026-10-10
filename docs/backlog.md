@@ -18,4 +18,4 @@
 - [x] P0-04: Fix race result persistence, tie to match end, prevent duplicate users.
 
 ## Step 5: Fix P3 - Visuals & Polish
-- [ ] Implement proper sprites, tilemaps instead of rectangles.
+- [x] Implement proper sprites, tilemaps instead of rectangles.

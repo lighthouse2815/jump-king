@@ -10,8 +10,8 @@ export class MainScene extends Phaser.Scene {
   private localPlayerController!: PlayerController;
   
   // Visuals
-  private playerSprites = new Map<string, Phaser.GameObjects.Rectangle>();
-  private platforms: Phaser.GameObjects.Rectangle[] = [];
+  private playerSprites = new Map<string, Phaser.GameObjects.Sprite>();
+  private platforms: Phaser.GameObjects.TileSprite[] = [];
   
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private spaceKey!: Phaser.Input.Keyboard.Key;
@@ -27,9 +27,23 @@ export class MainScene extends Phaser.Scene {
     super({ key: 'MainScene' });
   }
 
+  preload() {
+    this.load.image('player_idle', '/assets/player_idle.svg');
+    this.load.image('player_jump', '/assets/player_jump.svg');
+    this.load.image('platform', '/assets/platform.svg');
+    this.load.image('finish', '/assets/finish.svg');
+    this.load.image('bg', '/assets/bg.svg');
+  }
+
   async create() {
     this.physicsWorld = new PhysicsWorld();
-    MAP_1.forEach(p => this.createPlatform(p.x, p.y, p.w, p.h));
+    
+    this.add.tileSprite(400, -200, 800, 3000, 'bg').setScrollFactor(0.2, 0.2);
+    
+    MAP_1.forEach(p => {
+      const isFinish = p.y === -250 && p.w === 150;
+      this.createPlatform(p.x, p.y, p.w, p.h, isFinish);
+    });
 
                                 
     // Connect to server
@@ -58,13 +72,7 @@ export class MainScene extends Phaser.Scene {
     const isLocal = sessionId === this.network.sessionId;
     
     // Create visual
-    const sprite = this.add.rectangle(
-      player.x + 10,
-      player.y + 15,
-      20,
-      30,
-      isLocal ? 0x00ffff : 0xff0000
-    );
+    const sprite = this.add.sprite(player.x + 10, player.y + 15, 'player_idle');
     this.playerSprites.set(sessionId, sprite);
 
     if (isLocal) {
@@ -83,7 +91,7 @@ export class MainScene extends Phaser.Scene {
         sprite.setPosition(player.x + 10, player.y + 15);
         
         // Update charge color for remote
-        this.updateSpriteColor(sprite, player.chargeTicks, false);
+        this.updateSpriteState(sprite, player.chargeTicks, player.y, player.direction, false);
       });
     }
   }
@@ -96,10 +104,11 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  private createPlatform(x: number, y: number, w: number, h: number) {
+  private createPlatform(x: number, y: number, w: number, h: number, isFinish = false) {
     const body = new Body(x, y, w, h, true);
     this.physicsWorld.addBody(body);
-    const visual = this.add.rectangle(x + w/2, y + h/2, w, h, 0x00ff00);
+    const tex = isFinish ? 'finish' : 'platform';
+    const visual = this.add.tileSprite(x + w/2, y + h/2, w, h, tex);
     this.platforms.push(visual);
   }
 
@@ -179,18 +188,27 @@ export class MainScene extends Phaser.Scene {
         this.localPlayerBody.position.x + this.localPlayerBody.size.x / 2,
         this.localPlayerBody.position.y + this.localPlayerBody.size.y / 2
       );
-      this.updateSpriteColor(sprite, this.localPlayerController.chargeTicks, true);
+      this.updateSpriteState(sprite, this.localPlayerController.chargeTicks, this.localPlayerBody.position.y, this.localPlayerController.direction, true);
     }
 
   }
 
-  private updateSpriteColor(sprite: Phaser.GameObjects.Rectangle, chargeTicks: number, isLocal: boolean) {
+  private updateSpriteState(sprite: Phaser.GameObjects.Sprite, chargeTicks: number, y: number, dir: number, isLocal: boolean) {
+    sprite.setFlipX(dir === -1);
+    
     if (chargeTicks > 0) {
-      const chargeRatio = chargeTicks / GAME_CONFIG.maxChargeTicks;
-      const g = Math.floor(255 * chargeRatio);
-      sprite.setFillStyle(isLocal ? ((0 << 16) | (g << 8) | 255) : ((255 << 16) | (g << 8) | 0));
+      sprite.setTexture('player_jump');
+      const chargeRatio = chargeTicks / 60; // GAME_CONFIG.maxChargeTicks
+      const g = Math.floor(255 * (1 - chargeRatio));
+      const r = isLocal ? 0 : 255;
+      const b = isLocal ? 255 : 0;
+      sprite.setTint((r << 16) | (g << 8) | b);
     } else {
-      sprite.setFillStyle(isLocal ? 0x00ffff : 0xff0000);
+      sprite.setTexture('player_idle');
+      sprite.clearTint();
+      if (!isLocal) {
+        sprite.setTint(0xffaaaa);
+      }
     }
   }
 }
