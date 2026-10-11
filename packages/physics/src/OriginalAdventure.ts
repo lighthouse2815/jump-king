@@ -1,4 +1,9 @@
 import type { OriginalState } from './OriginalSimulation';
+import {
+  OriginalDialogue,
+  type OriginalDialogueDefinition,
+  type OriginalDialogueState,
+} from './OriginalDialogue';
 
 export const ORIGINAL_ITEMS = [
   'Crown',
@@ -68,6 +73,7 @@ export interface BirdDefinition {
   positions: BirdPosition[];
 }
 export interface OriginalAdventureData {
+  npcs?: OriginalDialogueDefinition[];
   items: WorldItemDefinition[];
   itemTextures: Record<string, string>;
   skins: { item: string; texture: string; layer: string }[];
@@ -96,6 +102,7 @@ export interface MerchantState {
   ticks: number;
 }
 export interface OriginalAdventureState {
+  dialogue?: OriginalDialogueState;
   inventory: Record<string, number>;
   equipped: string[];
   collected: string[];
@@ -133,10 +140,12 @@ const cleanCounts = (counts: Record<string, number> | undefined) =>
 /** WorldItemComp, MerchantComp, RavenComp and RavenFlee from the supplied 1.04. */
 export class OriginalAdventure {
   private state: OriginalAdventureState;
+  readonly dialogue: OriginalDialogue;
   constructor(
     readonly data: OriginalAdventureData,
     initial?: OriginalAdventureState,
   ) {
+    this.dialogue = new OriginalDialogue(data.npcs || []);
     this.state = {
       inventory: {},
       equipped: [],
@@ -216,7 +225,8 @@ export class OriginalAdventure {
           ? 'CrownOwl'
           : 'Crown';
     this.add(item, true);
-    if (campaign === 'ghost' && this.state.birds.tsuchinoko?.done) this.add('CapeOwl', true);
+    if (campaign === 'ghost' && this.state.birds.tsuchinoko?.done)
+      this.add('CapeOwl', true);
     this.flag(
       campaign === 'nbp'
         ? 'CompletedNBP'
@@ -351,6 +361,8 @@ export class OriginalAdventure {
     } else this.startStage(definition, 'busy');
   }
   tick(player: OriginalState) {
+    for (const name of this.dialogue.tick(player, this.state.flags))
+      this.recordTalk(name);
     const events: AdventureEvent[] = [];
     const box = {
       x: Math.trunc(player.x),
@@ -435,6 +447,7 @@ export class OriginalAdventure {
   }
   getState(): OriginalAdventureState {
     return {
+      dialogue: this.dialogue.getState(),
       inventory: { ...this.state.inventory },
       equipped: [...this.state.equipped],
       collected: [...this.state.collected],
@@ -455,6 +468,7 @@ export class OriginalAdventure {
     };
   }
   restore(state: OriginalAdventureState) {
+    if (state.dialogue) this.dialogue.restore(state.dialogue);
     this.state.inventory = cleanCounts(state.inventory);
     this.state.equipped = [];
     for (const item of Array.isArray(state.equipped) ? state.equipped : [])

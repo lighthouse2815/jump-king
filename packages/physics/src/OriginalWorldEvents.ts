@@ -78,7 +78,7 @@ export function createOriginalWallDefinition(
   screen: number,
   data: OriginalRaymanData,
   textureSize: { width: number; height: number },
-  id = `${screen}:${data.texture_name}`
+  id = `${screen}:${data.texture_name}`,
 ): OriginalWallEventDefinition {
   const position = { x: data.Position.X, y: data.Position.Y - screen * 360 };
   const rectangles = data.hitboxes?.Rectangle;
@@ -114,7 +114,7 @@ export function createOriginalWallDefinition(
 
 /** Q tiles are imported already; gray 128/128/128 fake tiles are omitted by the importer. */
 export function originalQuarkRegions(
-  screens: readonly Pick<OriginalScreen, 'tiles'>[]
+  screens: readonly Pick<OriginalScreen, 'tiles'>[],
 ): OriginalEventCollisionRegion[] {
   const regions: OriginalEventCollisionRegion[] = [];
   screens.forEach((screen, index) => {
@@ -221,7 +221,7 @@ function integerHitbox(rect: OriginalEventRectangle): AABB {
     Math.trunc(rect.x),
     Math.trunc(rect.y),
     rect.width,
-    rect.height
+    rect.height,
   );
 }
 
@@ -230,7 +230,7 @@ function copyState(state: OriginalWorldEventsState): OriginalWorldEventsState {
     ...state,
     registeredScreens: [...state.registeredScreens],
     walls: Object.fromEntries(
-      Object.entries(state.walls).map(([id, wall]) => [id, { ...wall }])
+      Object.entries(state.walls).map(([id, wall]) => [id, { ...wall }]),
     ),
     lightning: state.lightning ? { ...state.lightning } : null,
   };
@@ -285,7 +285,7 @@ export class OriginalWorldEvents {
             canPlaySound: true,
             alpha: 0,
           },
-        ])
+        ]),
       ),
       lightning: null,
       randomState: seed >>> 0 || 1,
@@ -297,7 +297,28 @@ export class OriginalWorldEvents {
   }
 
   restore(state: OriginalWorldEventsState): void {
-    if (state.version !== 1 || this.walls.some((wall) => !state.walls[wall.id]))
+    if (
+      state.version !== 1 ||
+      !state.walls ||
+      this.walls.some((wall) => !state.walls[wall.id]) ||
+      (state.lastTick !== null &&
+        (!Number.isSafeInteger(state.lastTick) || state.lastTick < 0)) ||
+      !Array.isArray(state.registeredScreens) ||
+      !state.registeredScreens.every(
+        (screen) => Number.isSafeInteger(screen) && screen >= 0 && screen < 169,
+      ) ||
+      !Number.isSafeInteger(state.randomState) ||
+      !Object.values(state.walls).every(
+        (wall) =>
+          Number.isFinite(wall.alpha) && wall.alpha >= 0 && wall.alpha <= 1,
+      ) ||
+      (state.lightning &&
+        ![
+          state.lightning.screen,
+          state.lightning.triggerTick,
+          state.lightning.alpha,
+        ].every(Number.isFinite))
+    )
       throw new Error('Incompatible original world events snapshot');
     this.state = copyState(state);
   }
@@ -305,7 +326,7 @@ export class OriginalWorldEvents {
   tick(player: OriginalWorldEventPlayer): OriginalWorldEvent[] {
     if (!Number.isSafeInteger(player.ticks) || player.ticks < 0)
       throw new Error(
-        'Original world events require a nonnegative integer tick'
+        'Original world events require a nonnegative integer tick',
       );
     if (player.ticks === this.state.lastTick) return [];
     if (this.state.lastTick !== null && player.ticks < this.state.lastTick)
@@ -323,7 +344,7 @@ export class OriginalWorldEvents {
     for (const wall of this.walls) {
       const state = this.state.walls[wall.id];
       const touching = wall.hitboxes.some((rect) =>
-        hitbox.intersects(new AABB(rect.x, rect.y, rect.width, rect.height))
+        hitbox.intersects(new AABB(rect.x, rect.y, rect.width, rect.height)),
       );
       if (touching !== state.touching) {
         const key = touching
@@ -341,8 +362,8 @@ export class OriginalWorldEvents {
           Math.min(
             WALL_FADE_TICKS,
             Math.round(state.alpha * WALL_FADE_TICKS) +
-              (touching ? -elapsed : elapsed)
-          )
+              (touching ? -elapsed : elapsed),
+          ),
         ) / WALL_FADE_TICKS;
       if (touching !== state.touching || alpha !== state.alpha)
         events.push({
@@ -392,7 +413,7 @@ export class OriginalWorldEvents {
    */
   getCollisionOverrides(
     hitbox: OriginalEventRectangle,
-    screen: number
+    screen: number,
   ): OriginalCollisionOverrides {
     const body = integerHitbox(hitbox);
     const result: OriginalCollisionOverrides = {
@@ -405,7 +426,7 @@ export class OriginalWorldEvents {
         region.rect.x,
         region.rect.y,
         region.rect.width,
-        region.rect.height
+        region.rect.height,
       );
       if (!body.intersects(rect)) continue;
       if (region.kind === 'fake' || body.bottom > rect.bottom)
@@ -417,7 +438,7 @@ export class OriginalWorldEvents {
 
   private updateLightning(
     player: OriginalWorldEventPlayer,
-    events: OriginalWorldEvent[]
+    events: OriginalWorldEvent[],
   ): void {
     const lightning = this.state.lightning;
     if (!lightning) return;
@@ -458,7 +479,7 @@ export class OriginalWorldEvents {
           : Math.round(
               (1 -
                 (age - LIGHTNING_FLASH - LIGHTNING_GAP + 1) / LIGHTNING_FADE) *
-                256
+                256,
             ) / 512;
     if (phase !== lightning.phase || alpha !== lightning.alpha)
       events.push({

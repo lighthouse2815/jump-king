@@ -28,6 +28,21 @@ const lines = (value) =>
   array(value?.lines?.string)
     .map((key) => language[String(key).trim()])
     .filter(Boolean);
+const triggerRect = (npc) => {
+  const rect = npc.trigger.screen_rect;
+  return rect?.Width
+    ? { x: rect.X, y: rect.Y, width: rect.Width, height: rect.Height }
+    : {
+        x: Math.trunc(
+          npc.position.X - npc.trigger.width * npc.trigger.center_x,
+        ),
+        y: Math.trunc(
+          npc.position.Y - npc.trigger.height * npc.trigger.center_y,
+        ),
+        width: npc.trigger.width,
+        height: npc.trigger.height,
+      };
+};
 const formatNpc = (npc) => {
   const texture = `props/textures/old_man/${npc.name}`;
   if (!manifest.textures[texture])
@@ -52,6 +67,18 @@ const formatNpc = (npc) => {
     quotes: quotes.filter((quote) => quote.lines.length),
     texture,
     achievements: array(npc.achievements?.OldmanTalkAchievement),
+    intro: lines(npc.intro_quote),
+    looping: array(npc.looping_lines?.OldManQuote).map(lines),
+    flagQuotes: array(npc.flag_quotes?.OldManFlagQuote).map((quote) => ({
+      flag: quote.flag,
+      quotes: array(quote.quotes?.OldManQuote).map(lines),
+    })),
+    screenQuotes: array(npc.screens?.OldManScreen).flatMap((entry) =>
+      array(entry.quotes?.OldManQuote).map((quote) => ({
+        screen: entry.screen,
+        lines: lines(quote),
+      })),
+    ),
   };
 };
 const npcs = [];
@@ -173,6 +200,19 @@ const skins = array(
   layer: array(skin.layers.SkinLayer)[0],
 }));
 const adventure = {
+  npcs: npcs
+    .filter((npc) => !merchants.some((merchant) => merchant.name === npc.name))
+    .map((npc) => ({
+      name: npc.name,
+      screen: npc.screen,
+      trigger: triggerRect(npc),
+      delay: npc.delay,
+      speed: npc.speed,
+      intro: npc.intro,
+      looping: npc.looping,
+      flagQuotes: npc.flagQuotes,
+      quotes: npc.screenQuotes,
+    })),
   items: worldItems,
   itemTextures,
   skins,
@@ -201,13 +241,56 @@ for (const file of fs.readdirSync(path.join(content, 'props/hidden_walls'))) {
       texture,
       position: wall.Position,
       screenCoordinates: !!wall.use_screen_coords,
+      appearSound: wall.sfx_info?.sfx_name_enable
+        ? `audio/event_sfx/${wall.sfx_info.sfx_name_enable}`
+        : 'audio/illusion',
+      disappearSound: wall.sfx_info?.sfx_name_disable
+        ? `audio/event_sfx/${wall.sfx_info.sfx_name_disable}`
+        : null,
+      playMode:
+        wall.sfx_info?.play_mode === 'PlayEveryTime' ? 'every-time' : 'once',
       hitboxes: array(wall.hitboxes?.Rectangle).length
         ? array(wall.hitboxes.Rectangle)
         : [{ X: 0, Y: 0, Width: info.width, Height: info.height }],
     };
   });
 }
+const propSettings = array(
+  read(path.join(content, 'props/textures/prop_settings.xml')).PropSettings
+    .settings.PropSetting,
+);
+const extraProps = {};
+for (const [folder, flag] of [
+  ['new babe plus props', 'StartedNBP'],
+  ['owl props', 'StartedGhost'],
+  ['hidden wall props', null],
+]) {
+  for (const file of fs.readdirSync(path.join(content, 'props', folder))) {
+    if (!file.endsWith('.xml')) continue;
+    const collection = read(
+      path.join(content, 'props', folder, file),
+    ).PropCollection;
+    if (!collection) continue;
+    const screen = collection.screen - 1;
+    extraProps[screen] ||= [];
+    for (const prop of array(collection.Props?.PropData)) {
+      const setting = propSettings.find(
+        (setting) => setting.name === prop.type,
+      );
+      const key = `props/textures/${prop.type}`;
+      extraProps[screen].push({
+        ...prop,
+        flag,
+        texture: manifest.textures[key] ? key : null,
+        cells: setting?.sheet_cells || { X: 1, Y: 1 },
+        fps: setting?.fps || 1,
+        durations: array(setting?.frames?.float),
+      });
+    }
+  }
+}
 const details = {
+  extraProps,
   npcs,
   walls,
   adventure,

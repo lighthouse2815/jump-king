@@ -98,12 +98,14 @@ export class OriginalSimulation {
     x = 231,
     y = 302,
     adventureData?: OriginalAdventureData,
+    initialAdventure?: OriginalAdventureState,
   ) {
     this.body = new Body(x, y, ORIGINAL_PHYSICS.width, ORIGINAL_PHYSICS.height);
     this.body.velocity.y = 1;
     this.body.isGrounded = true;
     this.screen = this.screenAt(y + ORIGINAL_PHYSICS.height / 2);
-    if (adventureData) this.adventure = new OriginalAdventure(adventureData);
+    if (adventureData)
+      this.adventure = new OriginalAdventure(adventureData, initialAdventure);
   }
 
   private screenAt(y: number) {
@@ -153,7 +155,7 @@ export class OriginalSimulation {
           continue;
         }
         if (code === 'Q') {
-          info.quark = true;
+          if (bottom <= py + 8) info.quark = true;
           continue;
         }
         if (code === ' ') continue;
