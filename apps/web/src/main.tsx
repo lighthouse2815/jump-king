@@ -5,6 +5,7 @@ import { LandingPage } from './pages/LandingPage';
 import { CommunityPage } from './pages/CommunityPage';
 import { RaceLobbyPage } from './pages/RaceLobbyPage';
 import { RaceGamePage } from './pages/RaceGamePage';
+import { OriginalGamePage } from './pages/OriginalGamePage';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
@@ -12,6 +13,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/play" element={<OriginalGamePage />} />
         <Route path="/community" element={<CommunityPage />} />
         <Route path="/race" element={<RaceLobbyPage />} />
         <Route path="/race/:roomId" element={<RaceGamePage />} />

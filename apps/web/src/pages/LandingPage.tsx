@@ -1,25 +1,83 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { CAMPAIGNS, CampaignId } from '@jump-king/maps';
+import { readSave, saveKey } from '../game/soloSave';
+import { originalUrl } from '../game/originalAssets';
 
 export const LandingPage = () => {
   const navigate = useNavigate();
+  const [campaign, setCampaign] = useState<CampaignId>('original');
+  const save = readSave(campaign);
+  const start = () => {
+    if (
+      save &&
+      !window.confirm(
+        'Bắt đầu game mới? Tiến trình đã lưu của hành trình này sẽ được thay thế.'
+      )
+    )
+      return;
+    localStorage.removeItem(saveKey(campaign));
+    navigate(`/play?campaign=${campaign}`);
+  };
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white font-mono">
-      <h1 className="text-5xl font-bold mb-8 text-yellow-400">JUMP KING ONLINE</h1>
-      <div className="flex gap-4">
-        <button 
-          onClick={() => navigate('/community')}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-xl font-bold"
-        >
-          Community Tower
-        </button>
-        <button 
-          onClick={() => navigate('/race')}
-          className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg text-xl font-bold"
-        >
-          Race Arena
-        </button>
+    <main className="title-page">
+      <div className="title-scene" aria-hidden="true" />
+      <div className="title-content">
+        <span className="eyebrow">A TACTICAL LEAP OF FAITH</span>
+        <img
+          className="title-logo"
+          src={originalUrl('title_logo.png')}
+          alt="Jump King"
+          width="392"
+          height="111"
+        />
+        <p className="title-subtitle">
+          There is a smoking hot babe at the top!
+        </p>
+        <div className="campaign-selector" aria-label="Chọn hành trình">
+          {(Object.keys(CAMPAIGNS) as CampaignId[]).map((id) => (
+            <button
+              key={id}
+              className={id === campaign ? 'selected' : ''}
+              onClick={() => setCampaign(id)}
+              aria-pressed={id === campaign}
+            >
+              {CAMPAIGNS[id].name}
+            </button>
+          ))}
+        </div>
+        <nav className="title-menu" aria-label="Menu chính">
+          {save && (
+            <button
+              className="menu-button primary"
+              onClick={() => navigate(`/play?campaign=${campaign}`)}
+            >
+              Tiếp tục
+              <span>
+                Màn {save.state.screen + 1} · {save.state.jumps} lần nhảy
+              </span>
+            </button>
+          )}
+          <button
+            className={`menu-button ${save ? '' : 'primary'}`}
+            onClick={start}
+          >
+            Game mới<span>Chơi ngay trong trình duyệt</span>
+          </button>
+          <div className="online-options">
+            <Link to="/community">Community Tower ↗</Link>
+            <Link to="/race">Race Arena ↗</Link>
+          </div>
+        </nav>
+        <p className="title-controls">
+          <kbd>←</kbd> <kbd>→</kbd> di chuyển <span>·</span> <kbd>SPACE</kbd>{' '}
+          giữ và thả để nhảy
+        </p>
+        <p className="title-footnote">
+          Bản web từ dữ liệu Jump King 1.04 · Hỗ trợ bàn phím, tay cầm và cảm
+          ứng
+        </p>
       </div>
-    </div>
+    </main>
   );
 };

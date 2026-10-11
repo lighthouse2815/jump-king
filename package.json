@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "import:original": "node scripts/import-original.cjs",
-    "dev": "pnpm -r run build && pnpm --filter web run dev & pnpm --filter game-server run dev",
+    "dev": "pnpm build && pnpm --parallel --filter web --filter game-server dev",
+    "start": "pnpm --filter game-server start",
+    "test:e2e": "playwright test",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint"
