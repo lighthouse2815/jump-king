@@ -153,7 +153,7 @@ export function OriginalGamePage({
     game.current = phaser;
     return () => {
       active = false;
-      instance.persist();
+      instance.disposeScene();
       phaser.destroy(true);
       game.current = null;
       scene.current = null;

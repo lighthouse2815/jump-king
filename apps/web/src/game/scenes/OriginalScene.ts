@@ -417,7 +417,7 @@ export class OriginalScene extends Phaser.Scene {
     }
   }
 
-  private disposeScene = () => {
+  disposeScene = () => {
     if (this.disposed) return;
     this.persist();
     this.disposed = true;
