@@ -124,6 +124,19 @@ const intersects = (a: AdventureRect, b: AdventureRect) =>
   a.x + a.width > b.x &&
   a.y < b.y + b.height &&
   a.y + a.height > b.y;
+export function originalWorldItemBounds(
+  item: WorldItemDefinition,
+): AdventureRect {
+  const y = item.y - item.screen * 360;
+  return item.invisible
+    ? { x: 0, y: Math.trunc(y / 360) * 360 + 360, width: 480, height: 360 }
+    : {
+        x: item.x - item.width / 2,
+        y: y - item.height,
+        width: item.width,
+        height: item.height,
+      };
+}
 const validItem = (item: string) =>
   (ORIGINAL_ITEMS as readonly string[]).includes(item);
 const cleanCounts = (counts: Record<string, number> | undefined) =>
@@ -372,15 +385,7 @@ export class OriginalAdventure {
     };
     for (const item of this.getWorldItems()) {
       if (item.displayOnly) continue;
-      const y = item.y - item.screen * 360;
-      const hitbox = item.invisible
-        ? { x: 0, y: Math.trunc(y / 360) * 360 + 360, width: 480, height: 360 }
-        : {
-            x: item.x - item.width / 2,
-            y: y - item.height,
-            width: item.width,
-            height: item.height,
-          };
+      const hitbox = originalWorldItemBounds(item);
       if (intersects(box, hitbox)) {
         this.state.collected.push(item.id);
         this.add(item.item);
