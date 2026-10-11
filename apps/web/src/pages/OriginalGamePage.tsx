@@ -235,7 +235,10 @@ export function OriginalGamePage({
       ? setMenus((previous) => previous.slice(0, -1))
       : resume();
   useEffect(() => {
-    if (!ui.paused) setMenus(['pause']);
+    if (!ui.paused) {
+      setMenus(['pause']);
+      setDeveloperOpen(false);
+    }
   }, [ui.paused]);
   useEffect(() => {
     localStorage.setItem('jumpking.timer', String(showTimer));

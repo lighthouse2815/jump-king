@@ -305,4 +305,11 @@ test('gamepad menu consumes held confirmation and resumes real game controls', a
     .poll(async () => Number(await game.getAttribute('data-jumps')))
     .toBe(1);
   await press(0, false);
+  await openDeveloper(page);
+  const input = page.getByLabel('Mã cheat', { exact: true });
+  await input.focus();
+  await press(9, true);
+  await expect(game).toHaveAttribute('data-paused', 'false');
+  await expect(input).toHaveCount(0);
+  await press(9, false);
 });
