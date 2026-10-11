@@ -6,6 +6,10 @@ EC2 chạy Colyseus bằng systemd; Nginx kiểm tra token của Worker rồi ch
 
 ## Bản cập nhật 11/10/2026
 
+Menu mở đầu: frontend `7d43795f`, bản Pages https://bf8aeae4.jump-king-web.pages.dev/; production https://jump-king-web.pages.dev/. Menu dùng nền đen 4:3, logo, font Litter Lover, viền, con trỏ và nhạc gốc. Nhấn Space/Enter hoặc chạm lời nhắc để mở; **Other Babes** chọn DLC, **Play Online** vào Community Tower/Race Arena. Continue và xác nhận chơi mới dùng save thật; Options/Extras có chức năng cho trình duyệt.
+
+Build workspace và build Cloudflare từ checkout sạch thành công. 18 test trình duyệt cục bộ và 6 test trực tiếp trên production đã qua, gồm điều hướng bàn phím, cảm ứng, giữ save chiến dịch khác, tiếp tục DLC, âm thanh, thống kê, toàn màn hình và vào phòng online. Nhạc mở đầu kết thúc bằng sự kiện media thật rồi chuyển sang đoạn lặp; mọi âm thanh menu dừng khi vào game. Test phát nhạc nhanh thay cho tua gần cuối để không phụ thuộc cách CDN xử lý việc tìm vị trí trong Ogg. Font/viền/con trỏ production tải thành công, API trả về `{"status":"ok"}`. Backend và tài nguyên AWS giữ cấu hình hiện có.
+
 Chế độ `AUTOKING`: frontend `f57ba4ac`, bản Pages https://e04bb3c5.jump-king-web.pages.dev/; production https://jump-king-web.pages.dev/. Trong Chơi đơn, mở **Chạy thử tự động**, nhập mã và chọn tốc độ 1×–64×. Phiên cheat tham quan 169 màn, thử 32 NPC, 5 thương nhân, 4 nhiệm vụ chim và 6 biến thể kết thúc, giữ nguyên save và profile thật. Tính năng chạy trong trình duyệt và được triển khai từ checkout sạch của commit đã push.
 
 Build Cloudflare thành công; 151 test đơn vị, 26 test trình duyệt cục bộ và 15 test trên production đã qua. Kiểm tra gồm hành trình tham quan cả ba chiến dịch, mã sai, tạm dừng, báo cáo tương tác, khôi phục save có Cap, giao diện điện thoại và Community/Race hai người. Lượt tham quan production ở 64× hoàn tất trong khoảng 2 phút 36 giây trên máy kiểm tra. API production trả về `{"status":"ok"}`.

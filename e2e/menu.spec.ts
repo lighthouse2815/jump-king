@@ -266,21 +266,7 @@ test('menu music loops and all menu sounds stop when gameplay opens', async ({
       }),
     )
     .toBe(true);
-  // Seek the real media near its end so the native ended event switches to the loop.
-  await expect
-    .poll(() =>
-      page.evaluate(() => {
-        const list = (
-          window as typeof window & { menuAudio: HTMLAudioElement[] }
-        ).menuAudio;
-        return list.some(
-          (audio) =>
-            audio.src.includes('menu_intro.ogg') &&
-            Number.isFinite(audio.duration),
-        );
-      }),
-    )
-    .toBe(true);
+  // Play the real intro faster; its native ended event must start the loop.
   await page.evaluate(() => {
     const list = (
       window as typeof window & { menuAudio: HTMLAudioElement[] }
@@ -288,7 +274,7 @@ test('menu music loops and all menu sounds stop when gameplay opens', async ({
     const intro = list.find(
       (audio) => audio.src.includes('menu_intro.ogg') && !audio.paused,
     )!;
-    intro.currentTime = intro.duration - 0.2;
+    intro.playbackRate = 8;
   });
   await expect
     .poll(
