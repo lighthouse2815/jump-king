@@ -1345,7 +1345,11 @@ export class OriginalScene extends Phaser.Scene {
   private fail(error: string) {
     if (this.disposed) return;
     this.ready = false;
-    this.options.onUi({ ...this.ui(), status: 'ERROR', error });
+    this.options.onUi({
+      ...this.ui(),
+      status: 'ERROR',
+      error: error || 'Không thể mở game. Hãy thử lại.',
+    });
   }
   private ui(): OriginalUi {
     const sim = this.simulation;

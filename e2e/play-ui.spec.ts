@@ -1,6 +1,42 @@
 import { test, expect } from '@playwright/test';
 import { pauseGame, openDeveloper } from './helpers/gameMenu';
 
+test('a blocked connection shows an error and retry connects to the real server', async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(60000);
+  const matchmaking = '**/matchmake/joinOrCreate/original_tower';
+  await page.route(matchmaking, async (route) => {
+    const response = await route.fetch();
+    await context.setOffline(true);
+    await route.fulfill({ response });
+  });
+  await page.goto('/community');
+  const game = page.getByTestId('game-state');
+  await expect(game).toHaveAttribute('data-status', 'ERROR', {
+    timeout: 30000,
+  });
+  await expect(page.getByRole('alert')).toContainText(
+    'Không thể mở game. Hãy thử lại.',
+  );
+  await context.setOffline(false);
+  await page.unroute(matchmaking);
+  await page
+    .getByRole('button', { name: 'Thử lại', exact: true })
+    .click();
+  await expect(game).toHaveAttribute('data-status', 'PLAYING', {
+    timeout: 30000,
+  });
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.keyboard.down('Space');
+  await expect
+    .poll(async () => Number(await game.getAttribute('data-charge')))
+    .toBeGreaterThan(0.2);
+  await page.keyboard.up('Space');
+  await expect(game).toHaveAttribute('data-jumps', '1');
+});
+
 test('playing uses the original viewport and pause menus keep gameplay input isolated', async ({
   page,
 }) => {
