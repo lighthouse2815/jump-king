@@ -17,7 +17,7 @@ test('incorrect code leaves the current solo run intact', async ({ page }) => {
   await expect(page.getByTestId('autoplay-panel')).toHaveCount(0);
 });
 
-test('AUTOKING pauses, resumes, completes all three real campaigns, and preserves saves', async ({
+test('AUTOKING pauses, resumes, tours all three campaigns, and preserves saves', async ({
   page,
 }) => {
   test.setTimeout(240_000);
@@ -73,6 +73,28 @@ test('AUTOKING pauses, resumes, completes all three real campaigns, and preserve
     { timeout: 80_000 },
   );
   await expect(game).toHaveAttribute('data-status', 'COMPLETE');
+  // White Raven starts on screen 0, crosses NBP and also activates Fairy 2 there.
+  for (const [campaign, coverage] of [
+    [
+      'original',
+      '3 lần nhặt · 6 NPC · 1 giao dịch · 2 nhiệm vụ chim · 2 cắt cảnh',
+    ],
+    [
+      'nbp',
+      '10 lần nhặt · 14 NPC · 2 giao dịch · 0 nhiệm vụ chim · 2 cắt cảnh',
+    ],
+    [
+      'ghost',
+      '17 lần nhặt · 13 NPC · 2 giao dịch · 2 nhiệm vụ chim · 2 cắt cảnh',
+    ],
+  ])
+    await expect(
+      results.locator(`[data-campaign="${campaign}"]`),
+    ).toContainText(coverage);
+  await page.screenshot({
+    path: '/tmp/jump-king-autoplay-complete.png',
+    fullPage: true,
+  });
   expect(
     await page.evaluate(() =>
       Object.fromEntries(
@@ -93,4 +115,26 @@ test('AUTOKING pauses, resumes, completes all three real campaigns, and preserve
   await expect(game).toHaveAttribute('data-x', '231');
   await expect(game).toHaveAttribute('data-jumps', '0');
   await expect(page.getByRole('button', { name: 'Tháo Cap' })).toBeVisible();
+});
+
+test('cheat entry fits a phone screen and stopping immediately restores the solo run', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/play');
+  const game = page.getByTestId('game-state');
+  await expect(game).toHaveAttribute('data-status', 'PLAYING');
+  await enterCheat(page, 'AUTOKING');
+  await expect(game).toHaveAttribute('data-autoplay', 'true');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole('button', { name: 'Dừng tự chơi, trở lại save' })
+    .click();
+  await expect(game).toHaveAttribute('data-status', 'PLAYING');
+  await expect(game).toHaveAttribute('data-autoplay', 'false');
+  await expect(game).toHaveAttribute('data-jumps', '0');
 });

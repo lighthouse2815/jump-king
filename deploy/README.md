@@ -6,6 +6,14 @@ EC2 chạy Colyseus bằng systemd; Nginx kiểm tra token của Worker rồi ch
 
 ## Bản cập nhật 11/10/2026
 
+Chế độ `AUTOKING`: frontend `f57ba4ac`, bản Pages https://e04bb3c5.jump-king-web.pages.dev/; production https://jump-king-web.pages.dev/. Trong Chơi đơn, mở **Chạy thử tự động**, nhập mã và chọn tốc độ 1×–64×. Phiên cheat tham quan 169 màn, thử 32 NPC, 5 thương nhân, 4 nhiệm vụ chim và 6 biến thể kết thúc, giữ nguyên save và profile thật. Tính năng chạy trong trình duyệt và được triển khai từ checkout sạch của commit đã push.
+
+Build Cloudflare thành công; 151 test đơn vị, 26 test trình duyệt cục bộ và 15 test trên production đã qua. Kiểm tra gồm hành trình tham quan cả ba chiến dịch, mã sai, tạm dừng, báo cáo tương tác, khôi phục save có Cap, giao diện điện thoại và Community/Race hai người. Lượt tham quan production ở 64× hoàn tất trong khoảng 2 phút 36 giây trên máy kiểm tra. API production trả về `{"status":"ok"}`.
+
+White Raven bắt đầu ở màn 0 và đi xuyên sang New Babe+. Vì vậy báo cáo bản chính có 6 NPC (gồm Fairy 2 của DLC) và 2 nhiệm vụ chim; New Babe+ có 14 NPC và 0 nhiệm vụ chim; Ghost có 13 NPC và 2 nhiệm vụ chim. NPC có thể được gặp lại giữa các lượt; toàn bộ 32 NPC trong dữ liệu đều được kiểm tra bằng mô phỏng.
+
+### Bản gameplay trước chế độ tham quan
+
 Code game: `f1153318`; bản Pages: https://534637d3.jump-king-web.pages.dev/ (production https://jump-king-web.pages.dev/). Đã cập nhật backend trên EC2 hiện có, giữ Nginx và timer dừng trước hạn Free plan.
 
 Đã xác minh build, 148 test đơn vị, 23 test trình duyệt cục bộ và 12 test trực tiếp trên production. Kiểm tra gồm save cũ, Cap, giữ trang bị qua chiến dịch, thành tích, cắt cảnh/phần thưởng, cảm ứng, Community và Race hai người. Kết nối WSS production có trạng thái vật phẩm/hội thoại mới và từ chối yêu cầu mặc Snake Ring chưa sở hữu. Service và timer đều active; số lần service tự khởi động lại là 0 sau cập nhật.
