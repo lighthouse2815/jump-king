@@ -1,6 +1,50 @@
 import { test, expect } from '@playwright/test';
 import { pauseGame, openDeveloper } from './helpers/gameMenu';
 
+test('a failed prefetch stays visible during room updates and retry restores playing', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(60000);
+  const asset = '**/original/screens/midground/2.png';
+  await page.route(asset, (route) => route.abort());
+  await page.goto('/community');
+  const game = page.getByTestId('game-state');
+  await expect(game).toHaveAttribute('data-status', 'ERROR', {
+    timeout: 30000,
+  });
+  const error = page.locator('.game-status[role="alert"]');
+  await expect(error).toContainText('screens/midground/2');
+  const peer = await browser.newContext();
+  try {
+    const other = await peer.newPage();
+    await other.goto('/community');
+    await expect(other.getByTestId('game-state')).toHaveAttribute(
+      'data-status',
+      'PLAYING',
+      { timeout: 30000 },
+    );
+    await expect(page.getByTestId('player-count')).toHaveText(
+      '● 2 người trong phòng',
+    );
+    await expect(game).toHaveAttribute('data-status', 'ERROR');
+    await expect(error).toBeVisible();
+    await page.unroute(asset);
+    await page
+      .getByRole('button', { name: 'Thử lại', exact: true })
+      .click();
+    await expect(game).toHaveAttribute('data-status', 'PLAYING', {
+      timeout: 30000,
+    });
+    await expect(error).toHaveCount(0);
+    await expect(other.getByTestId('player-count')).toHaveText(
+      '● 2 người trong phòng',
+    );
+  } finally {
+    await peer.close();
+  }
+});
+
 test('a blocked connection shows an error and retry connects to the real server', async ({
   page,
   context,

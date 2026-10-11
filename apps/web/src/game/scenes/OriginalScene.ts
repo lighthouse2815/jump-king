@@ -149,6 +149,7 @@ export class OriginalScene extends Phaser.Scene {
   private savedAt = 0;
   private saveError = '';
   private audioError = '';
+  private gameError = '';
   private gamepadPause = false;
   private progress = 0;
   private room: Room<OriginalTowerState> | null = null;
@@ -1345,24 +1346,24 @@ export class OriginalScene extends Phaser.Scene {
   private fail(error: string) {
     if (this.disposed) return;
     this.ready = false;
-    this.options.onUi({
-      ...this.ui(),
-      status: 'ERROR',
-      error: error || 'Không thể mở game. Hãy thử lại.',
-    });
+    this.gameError = error || 'Không thể mở game. Hãy thử lại.';
+    this.emitUi();
   }
   private ui(): OriginalUi {
     const sim = this.simulation;
     const location = this.manifest?.screens[sim?.screen ?? 0]?.location || '';
     return {
-      status: this.activeCutscene
-        ? 'CUTSCENE'
-        : this.completed
-          ? 'COMPLETE'
-          : this.ready
-            ? 'PLAYING'
-            : 'LOADING',
+      status: this.gameError
+        ? 'ERROR'
+        : this.activeCutscene
+          ? 'CUTSCENE'
+          : this.completed
+            ? 'COMPLETE'
+            : this.ready
+              ? 'PLAYING'
+              : 'LOADING',
       cutscene: this.activeCutscene,
+      error: this.gameError || undefined,
       cutsceneReady: this.cutscenes?.state === this.activeCutscene,
       inventory: Object.entries(sim?.adventure?.inventory || {})
         .filter(([, count]) => count > 0)
