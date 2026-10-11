@@ -4,9 +4,17 @@ import { PlayerInput } from './PlayerController';
 /** Values from the supplied Jump King 1.04 executable, in pixels per 60 Hz tick. */
 const gravity = Math.fround(153 / 595);
 export const ORIGINAL_PHYSICS = {
-  width: 18, height: 26, walkSpeed: 1.5, jumpSpeed: 3.5,
-  gravity, jumpVelocity: -Math.fround(34 * gravity), maxFall: 10,
-  chargeTicks: 36, bounce: 0.5, iceFriction: 0.1, splatTicks: 30,
+  width: 18,
+  height: 26,
+  walkSpeed: 1.5,
+  jumpSpeed: 3.5,
+  gravity,
+  jumpVelocity: -Math.fround(34 * gravity),
+  maxFall: 10,
+  chargeTicks: 36,
+  bounce: 0.5,
+  iceFriction: 0.1,
+  splatTicks: 30,
 };
 
 export interface OriginalScreen {
@@ -16,21 +24,46 @@ export interface OriginalScreen {
 }
 
 export interface OriginalState {
-  x: number; y: number; vx: number; vy: number;
-  grounded: boolean; charge: number; direction: number; prevJump: boolean;
-  jumpConsumed: boolean; directions: number[]; splat: number; knocked: boolean;
-  ice: boolean; snow: boolean; water: boolean; sand: boolean;
-  wind: boolean; screen: number; ticks: number; jumps: number; falls: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  grounded: boolean;
+  charge: number;
+  direction: number;
+  prevJump: boolean;
+  jumpConsumed: boolean;
+  directions: number[];
+  splat: number;
+  knocked: boolean;
+  ice: boolean;
+  snow: boolean;
+  water: boolean;
+  sand: boolean;
+  wind: boolean;
+  screen: number;
+  ticks: number;
+  jumps: number;
+  falls: number;
+  airChargeTicks?: number;
 }
 
 interface Contact {
-  solid: boolean; slope: string; ice: boolean; snow: boolean;
-  water: boolean; sand: boolean; quark: boolean; wind: boolean;
+  solid: boolean;
+  slope: string;
+  ice: boolean;
+  snow: boolean;
+  water: boolean;
+  sand: boolean;
+  quark: boolean;
+  wind: boolean;
 }
 
 const f = Math.fround;
-const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
-const towards = (n: number, target: number, step: number) => n + clamp(target - n, -step, step);
+const clamp = (n: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, n));
+const towards = (n: number, target: number, step: number) =>
+  n + clamp(target - n, -step, step);
 
 /** Original game movement, shared by browser and authoritative server. */
 export class OriginalSimulation {
@@ -51,48 +84,97 @@ export class OriginalSimulation {
   elapsedTicks = 0;
   jumps = 0;
   falls = 0;
+  private airChargeTicks = 0;
 
-  constructor(readonly screens: OriginalScreen[], x = 231, y = 302) {
+  constructor(
+    readonly screens: OriginalScreen[],
+    x = 231,
+    y = 302
+  ) {
     this.body = new Body(x, y, ORIGINAL_PHYSICS.width, ORIGINAL_PHYSICS.height);
     this.body.velocity.y = 1;
     this.body.isGrounded = true;
     this.screen = this.screenAt(y + ORIGINAL_PHYSICS.height / 2);
   }
 
-  private screenAt(y: number) { return clamp(-Math.floor(y / 360), 0, this.screens.length - 1); }
+  private screenAt(y: number) {
+    return clamp(-Math.floor(y / 360), 0, this.screens.length - 1);
+  }
 
   private contact(): Contact {
-    const x = Math.trunc(this.body.position.x), y = Math.trunc(this.body.position.y);
-    const right = x + this.body.size.x, bottom = y + this.body.size.y;
-    const info: Contact = { solid: false, slope: '', ice: false, snow: false, water: false, sand: false, quark: false, wind: this.screens[this.screen]?.wind || false };
-    let nearest = Infinity, solidTop = Infinity, slopeTop = Infinity;
+    const x = Math.trunc(this.body.position.x),
+      y = Math.trunc(this.body.position.y);
+    const right = x + this.body.size.x,
+      bottom = y + this.body.size.y;
+    const info: Contact = {
+      solid: false,
+      slope: '',
+      ice: false,
+      snow: false,
+      water: false,
+      sand: false,
+      quark: false,
+      wind: this.screens[this.screen]?.wind || false,
+    };
+    let nearest = Infinity,
+      solidTop = Infinity,
+      slopeTop = Infinity;
     for (let ty = Math.floor(y / 8); ty <= Math.floor((bottom - 1) / 8); ty++) {
       const screen = -Math.floor(ty / 45);
       if (screen < 0 || screen >= this.screens.length) continue;
       const row = this.screens[screen].tiles[ty + screen * 45];
-      for (let tx = Math.max(0, Math.floor(x / 8)); tx <= Math.min(59, Math.floor((right - 1) / 8)); tx++) {
-        const code = row[tx], px = tx * 8, py = ty * 8;
-        if (code === 'X') { info.wind = false; continue; }
-        if (code === 'W') { info.water = true; continue; }
-        if (code === 'S') { info.sand = true; continue; }
-        if (code === 'Q') { info.quark = true; continue; }
+      for (
+        let tx = Math.max(0, Math.floor(x / 8));
+        tx <= Math.min(59, Math.floor((right - 1) / 8));
+        tx++
+      ) {
+        const code = row[tx],
+          px = tx * 8,
+          py = ty * 8;
+        if (code === 'X') {
+          info.wind = false;
+          continue;
+        }
+        if (code === 'W') {
+          info.water = true;
+          continue;
+        }
+        if (code === 'S') {
+          info.sand = true;
+          continue;
+        }
+        if (code === 'Q') {
+          info.quark = true;
+          continue;
+        }
         if (code === ' ') continue;
         // Exact triangular half-tile tests using the original integer hitbox.
-        const left = Math.max(x, px) - px, top = Math.max(y, py) - py;
-        const r = Math.min(right, px + 8) - px, b = Math.min(bottom, py + 8) - py;
-        if ((code === 'a' && r + b < 8) || (code === 'b' && b < left) ||
-            (code === 'c' && top > r) || (code === 'd' && left + top > 8)) continue;
+        const left = Math.max(x, px) - px,
+          top = Math.max(y, py) - py;
+        const r = Math.min(right, px + 8) - px,
+          b = Math.min(bottom, py + 8) - py;
+        if (
+          (code === 'a' && r + b < 8) ||
+          (code === 'b' && b < left) ||
+          (code === 'c' && top > r) ||
+          (code === 'd' && left + top > 8)
+        )
+          continue;
         info.solid = true;
         info.ice ||= code === 'I';
         info.snow ||= code === 'N';
         if ('abcd'.includes(code)) {
           slopeTop = Math.min(slopeTop, py);
           const distance = Math.abs(px + 4 - (x + this.body.size.x / 2));
-          if (distance <= nearest) { nearest = distance; info.slope = code; }
+          if (distance <= nearest) {
+            nearest = distance;
+            info.slope = code;
+          }
         } else solidTop = Math.min(solidTop, py);
       }
     }
-    if (solidTop <= slopeTop && (info.slope === 'a' || info.slope === 'b')) info.slope = '';
+    if (solidTop <= slopeTop && (info.slope === 'a' || info.slope === 'b'))
+      info.slope = '';
     return info;
   }
 
@@ -112,22 +194,31 @@ export class OriginalSimulation {
     if (!this.screens[this.screen].wind) this.windEnabled = false;
     else if (body.isGrounded) this.windEnabled = true;
     if (info.wind && this.windEnabled && !this.onSnow) {
-      const phase = this.elapsedTicks / 60 * 0.48124886;
-      const wind = clamp(Math.sin(phase) * 2 + (Math.cos(phase) > 0 ? 1 : -1), -1, 1) * 0.1;
+      const phase = (this.elapsedTicks / 60) * 0.48124886;
+      const wind =
+        clamp(Math.sin(phase) * 2 + (Math.cos(phase) > 0 ? 1 : -1), -1, 1) *
+        0.1;
       body.velocity.x = f(body.velocity.x + wind);
     }
-    const vx = body.velocity.x, vy = body.velocity.y;
+    const vx = body.velocity.x,
+      vy = body.velocity.y;
     const water = this.inWater ? 0.5 : 1;
     const wasGrounded = body.isGrounded;
-    let sideSlope = false, bumped = false;
+    let sideSlope = false,
+      bumped = false;
     if (info.solid) {
       // Original behavior also allows movement out of an existing overlap.
       body.position.set(f(body.position.x + vx), f(body.position.y + vy));
       return;
     }
-    body.position.x = f(body.position.x + vx * water * (this.onSand ? 0.25 : 1));
+    body.position.x = f(
+      body.position.x + vx * water * (this.onSand ? 0.25 : 1)
+    );
     const teleport = this.screens[this.screen].teleport;
-    if (teleport >= 0 && (body.position.x + 9 < 0 || body.position.x + 9 > 480)) {
+    if (
+      teleport >= 0 &&
+      (body.position.x + 9 < 0 || body.position.x + 9 > 480)
+    ) {
       body.position.x += body.position.x + 9 < 0 ? 480 : -480;
       const current = Math.trunc(-(body.position.y - 360) / 360);
       body.position.y -= 360 * (teleport - current);
@@ -154,7 +245,10 @@ export class OriginalSimulation {
       }
     }
     const signY = body.velocity.y > 0 ? 1 : -1;
-    body.position.y = f(body.position.y + body.velocity.y * water * (this.onSand && body.velocity.y < 0 ? 0.5 : 1));
+    body.position.y = f(
+      body.position.y +
+        body.velocity.y * water * (this.onSand && body.velocity.y < 0 ? 0.5 : 1)
+    );
     if (!this.onSand && wasGrounded && body.velocity.y > 0) body.position.y++;
     info = this.contact();
     this.onSnow = false;
@@ -162,14 +256,20 @@ export class OriginalSimulation {
       body.position.y = Math.trunc(body.position.y);
       for (let attempts = 0; attempts < 500; attempts++) {
         const next = this.contact();
-        if (!next.solid && !(next.sand && !this.onSand && body.velocity.y < 0)) break;
+        if (!next.solid && !(next.sand && !this.onSand && body.velocity.y < 0))
+          break;
         info = next;
         body.position.y -= signY;
       }
       this.onIce = info.ice;
       if (signY > 0) {
         body.isGrounded = !info.slope;
-        if (info.slope) this.knocked = this.projectSlope(info.slope, body.velocity.x, body.velocity.y);
+        if (info.slope)
+          this.knocked = this.projectSlope(
+            info.slope,
+            body.velocity.x,
+            body.velocity.y
+          );
         else {
           this.knocked = false;
           this.onSnow = info.snow;
@@ -180,10 +280,12 @@ export class OriginalSimulation {
         }
       } else {
         bumped = true;
-        if (info.slope) this.projectSlope(info.slope, body.velocity.x, body.velocity.y);
+        if (info.slope)
+          this.projectSlope(info.slope, body.velocity.x, body.velocity.y);
         body.velocity.x = f(body.velocity.x * ORIGINAL_PHYSICS.bounce);
       }
-      if (!info.slope || body.velocity.y <= 0 || body.isGrounded) body.velocity.y = 0;
+      if (!info.slope || body.velocity.y <= 0 || body.isGrounded)
+        body.velocity.y = 0;
     } else {
       body.isGrounded = false;
       this.onIce = false;
@@ -192,12 +294,22 @@ export class OriginalSimulation {
         this.knocked = true;
         bumped = true;
       }
-      if (info.quark && body.velocity.y === ORIGINAL_PHYSICS.maxFall) body.position.y = Math.ceil(body.position.y / 8) * 8;
+      if (info.quark && body.velocity.y === ORIGINAL_PHYSICS.maxFall)
+        body.position.y = Math.ceil(body.position.y / 8) * 8;
     }
-    body.velocity.y = Math.min(f(body.velocity.y + gravity * water), ORIGINAL_PHYSICS.maxFall);
+    body.velocity.y = Math.min(
+      f(body.velocity.y + gravity * water),
+      ORIGINAL_PHYSICS.maxFall
+    );
     this.onSand = info.sand;
-    if (this.onSand) { body.velocity.y = Math.min(0.75, body.velocity.y); this.knocked = false; }
-    if (this.onIce) body.velocity.x = f(towards(body.velocity.x, 0, ORIGINAL_PHYSICS.iceFriction));
+    if (this.onSand) {
+      body.velocity.y = Math.min(0.75, body.velocity.y);
+      this.knocked = false;
+    }
+    if (this.onIce)
+      body.velocity.x = f(
+        towards(body.velocity.x, 0, ORIGINAL_PHYSICS.iceFriction)
+      );
     return bumped;
   }
 
@@ -206,7 +318,6 @@ export class OriginalSimulation {
     this.elapsedTicks++;
     const body = this.body;
     const intent = Number(input.right) - Number(input.left);
-    const justPressed = input.jump && !this.prevJump;
     if (!input.jump) this.jumpConsumed = false;
     this.prevJump = input.jump;
     if (this.splatTicks > 0) {
@@ -214,19 +325,35 @@ export class OriginalSimulation {
       if (body.isGrounded) this.splatTicks--;
       if (this.splatTicks === 0 && !intent && !input.jump) this.splatTicks = 1;
       this.chargeTicks = 0;
-    } else if (body.isGrounded || this.onSand) {
-      if (this.chargeTicks > 0 || (justPressed && !this.jumpConsumed)) {
+    } else if (
+      body.isGrounded ||
+      this.onSand ||
+      (this.chargeTicks > 0 && this.airChargeTicks < 2)
+    ) {
+      this.airChargeTicks =
+        body.isGrounded || this.onSand ? 0 : this.airChargeTicks + 1;
+      if (this.chargeTicks > 0 || (input.jump && !this.jumpConsumed)) {
         this.directions.unshift(intent);
         this.directions.length = Math.min(this.directions.length, 4);
         if (!this.onIce && body.isGrounded) body.velocity.x = 0;
         this.chargeTicks += this.inWater ? 0.5 : 1;
         if (this.chargeTicks >= ORIGINAL_PHYSICS.chargeTicks || !input.jump) {
-          let intensity = Math.min(1, this.chargeTicks / ORIGINAL_PHYSICS.chargeTicks);
-          const jumpDirection = intent || this.directions.find(value => value !== 0) || 0;
+          let intensity = Math.min(
+            1,
+            this.chargeTicks / ORIGINAL_PHYSICS.chargeTicks
+          );
+          const jumpDirection =
+            intent || this.directions.find((value) => value !== 0) || 0;
           if (!this.onSnow || intensity > 0.2) {
             if (this.onSnow && intensity < 0.3) intensity = 0.3;
             body.velocity.y = f(ORIGINAL_PHYSICS.jumpVelocity * intensity);
-            body.velocity.x = f(clamp(body.velocity.x + jumpDirection * ORIGINAL_PHYSICS.jumpSpeed, -3.5, 3.5));
+            body.velocity.x = f(
+              clamp(
+                body.velocity.x + jumpDirection * ORIGINAL_PHYSICS.jumpSpeed,
+                -3.5,
+                3.5
+              )
+            );
             if (jumpDirection) this.direction = jumpDirection;
             this.jumps++;
           }
@@ -238,35 +365,81 @@ export class OriginalSimulation {
         if (this.onSnow) body.velocity.x = 0;
         else if (this.onIce) {
           const target = intent * ORIGINAL_PHYSICS.walkSpeed;
-          if (intent && (Math.sign(target) !== Math.sign(body.velocity.x) || Math.abs(target) > Math.abs(body.velocity.x))) body.velocity.x = f(towards(body.velocity.x, target, 0.2));
+          if (
+            intent &&
+            (Math.sign(target) !== Math.sign(body.velocity.x) ||
+              Math.abs(target) > Math.abs(body.velocity.x))
+          )
+            body.velocity.x = f(towards(body.velocity.x, target, 0.2));
         } else body.velocity.x = intent * ORIGINAL_PHYSICS.walkSpeed;
         if (intent) this.direction = intent;
       }
-    } else { this.chargeTicks = 0; this.directions = []; }
+    } else {
+      this.chargeTicks = 0;
+      this.directions = [];
+      this.airChargeTicks = 0;
+    }
     const nextScreen = this.screenAt(body.position.y + 13);
-    if ((this.screen !== nextScreen) && (body.velocity.y !== 0) &&
-        Math.sign(nextScreen - this.screen) === Math.sign(-body.velocity.y) &&
-        !(body.velocity.y < 0 && Math.abs(body.velocity.y) < 3)) {
-      if (nextScreen < this.screen && this.screens[nextScreen].wind) this.windEnabled = true;
+    if (
+      this.screen !== nextScreen &&
+      body.velocity.y !== 0 &&
+      Math.sign(nextScreen - this.screen) === Math.sign(-body.velocity.y) &&
+      !(body.velocity.y < 0 && Math.abs(body.velocity.y) < 3)
+    ) {
+      if (nextScreen < this.screen && this.screens[nextScreen].wind)
+        this.windEnabled = true;
       this.screen = nextScreen;
     }
     return { bumped: !!bumped };
   }
 
   getState(): OriginalState {
-    return { x: this.body.position.x, y: this.body.position.y, vx: this.body.velocity.x, vy: this.body.velocity.y,
-      grounded: this.body.isGrounded, charge: this.chargeTicks, direction: this.direction, prevJump: this.prevJump,
-      jumpConsumed: this.jumpConsumed, directions: [...this.directions], splat: this.splatTicks, knocked: this.knocked,
-      ice: this.onIce, snow: this.onSnow, water: this.inWater, sand: this.onSand, wind: this.windEnabled,
-      screen: this.screen, ticks: this.elapsedTicks, jumps: this.jumps, falls: this.falls };
+    return {
+      x: this.body.position.x,
+      y: this.body.position.y,
+      vx: this.body.velocity.x,
+      vy: this.body.velocity.y,
+      grounded: this.body.isGrounded,
+      charge: this.chargeTicks,
+      direction: this.direction,
+      prevJump: this.prevJump,
+      jumpConsumed: this.jumpConsumed,
+      directions: [...this.directions],
+      splat: this.splatTicks,
+      knocked: this.knocked,
+      ice: this.onIce,
+      snow: this.onSnow,
+      water: this.inWater,
+      sand: this.onSand,
+      wind: this.windEnabled,
+      screen: this.screen,
+      ticks: this.elapsedTicks,
+      jumps: this.jumps,
+      falls: this.falls,
+      airChargeTicks: this.airChargeTicks,
+    };
   }
 
   restore(state: OriginalState) {
-    this.body.position.set(state.x, state.y); this.body.velocity.set(state.vx, state.vy);
-    this.body.isGrounded = state.grounded; this.chargeTicks = state.charge; this.direction = state.direction;
-    this.prevJump = state.prevJump; this.jumpConsumed = state.jumpConsumed; this.directions = [...state.directions];
-    this.splatTicks = state.splat; this.knocked = state.knocked; this.onIce = state.ice; this.onSnow = state.snow;
-    this.inWater = state.water; this.onSand = state.sand; this.windEnabled = state.wind;
-    this.screen = state.screen; this.elapsedTicks = state.ticks; this.jumps = state.jumps; this.falls = state.falls;
+    this.body.position.set(state.x, state.y);
+    this.body.velocity.set(state.vx, state.vy);
+    this.body.isGrounded = state.grounded;
+    this.chargeTicks = state.charge;
+    this.direction = state.direction;
+    this.prevJump = state.prevJump;
+    this.jumpConsumed = state.jumpConsumed;
+    this.directions = [...state.directions];
+    this.splatTicks = state.splat;
+    this.knocked = state.knocked;
+    this.onIce = state.ice;
+    this.onSnow = state.snow;
+    this.inWater = state.water;
+    this.onSand = state.sand;
+    this.windEnabled = state.wind;
+    this.screen = state.screen;
+    this.elapsedTicks = state.ticks;
+    this.jumps = state.jumps;
+    this.falls = state.falls;
+    this.airChargeTicks = state.airChargeTicks || 0;
   }
 }

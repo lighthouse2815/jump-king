@@ -19,7 +19,7 @@ export const GAME_CONFIG = {
 export class PlayerController {
   public chargeTicks: number = 0;
   public direction: 1 | -1 = 1;
-  private prevJump: boolean = false;
+  public prevJump: boolean = false;
 
   constructor(public body: Body) {}
 
