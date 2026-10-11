@@ -17,6 +17,10 @@ pnpm deploy:cloudflare
 
 Các lần cập nhật backend bằng `setup.sh` giữ vhost HTTPS riêng. Nếu EC2 đổi public IP sau stop/start, cập nhật IP của domain trong DuckDNS. Không lưu token DuckDNS hoặc khóa chứng chỉ trong repository. Ngày kiểm tra 11/10/2026, AWS vẫn là FREE/ACTIVE, còn 48,78 USD credit; tài nguyên và timer hạn Free plan giữ nguyên.
 
+Bản triển khai trực tiếp: code `52131dfb`, Pages https://61e56ec0.jump-king-web.pages.dev/; production https://jump-king-web.pages.dev/. Build từ checkout riêng thành công; bundle production chứa endpoint DuckDNS. Hai test Chrome production về Community hai người và Race hai người đã qua trong 24,9 giây. HTTPS health trả `{"status":"ok"}`, Nginx syntax hợp lệ, các timer gia hạn SSL và hạn Free plan đều active. `certbot renew --dry-run --run-deploy-hooks --no-random-sleep-on-renew` thành công, gồm reload Nginx.
+
+Probe Colyseus từ máy triển khai, mỗi endpoint 8 giây với input 60Hz: trực tiếp vào phòng 819 ms, ACK trung vị 91 ms, P95 109 ms (159 mẫu); Worker vào phòng 5906 ms, ACK trung vị 177 ms, P95 246 ms (140 mẫu). Đây là một lượt đo so sánh từ máy triển khai, không đảm bảo ping của mọi người chơi hoặc loại trừ lỗi prediction/rendering phía client. Frontend mới gửi matchmaking và WebSocket thẳng tới EC2; Worker cũ không nằm trên đường kết nối mặc định.
+
 ## Bản cập nhật 11/10/2026
 
 Giao diện chơi: frontend `20f07ff9`, bản Pages https://727eb48d.jump-king-web.pages.dev/; production https://jump-king-web.pages.dev/. Khung chơi 480×360 phóng theo tỉ lệ 4:3 trên nền đen. Menu tạm dừng dùng font, viền, con trỏ, checkbox và âm thanh gốc; có Resume, Inventory, Options, Save & Exit/Leave Room và Give Up. Thống kê nằm trong menu; đồng hồ mặc định tắt, bật ở Options → Graphics → Display Timer.
@@ -59,7 +63,7 @@ Kho đồ chơi đơn và thành tích nằm trong localStorage; kho đồ onlin
 | HTTPS/WSS      | Cổng 443, chứng chỉ Let's Encrypt             |
 | HTTP           | Cổng 80, ACME challenge và Worker dự phòng     |
 
-Cổng 2567 không mở ra Internet. Không có Elastic IP, load balancer, NAT Gateway hay database riêng. Public IP và hostname có thể đổi khi stop/start; khi đó cập nhật `GAME_ORIGIN` trong `cloudflare-server/wrangler.jsonc` rồi chạy `pnpm deploy:server`.
+Cổng 2567 không mở ra Internet. Không có Elastic IP, load balancer, NAT Gateway hay database riêng. Public IP và hostname có thể đổi khi stop/start; khi đó cập nhật IP DuckDNS. Nếu cần giữ Worker dự phòng, cập nhật thêm `GAME_ORIGIN` trong `cloudflare-server/wrangler.jsonc` rồi chạy `pnpm deploy:server`.
 
 ## Giới hạn miễn phí đã xác minh
 
