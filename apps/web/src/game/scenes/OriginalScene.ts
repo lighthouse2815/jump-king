@@ -328,6 +328,7 @@ export class OriginalScene extends Phaser.Scene {
       const audio = Object.keys(this.manifest.sounds).filter(
         (key) =>
           key.startsWith('audio/jump_king/') ||
+          key.startsWith('audio/gui_sfx/') ||
           ['audio/new_location', 'audio/talking', 'audio/illusion'].includes(
             key,
           ),
@@ -371,7 +372,7 @@ export class OriginalScene extends Phaser.Scene {
       this.keys = this.input.keyboard!.addKeys(
         'LEFT,RIGHT,A,D,SPACE,UP,W,ESC',
       ) as Record<string, Phaser.Input.Keyboard.Key>;
-      this.keys.ESC.on('down', () => this.setPaused(!this.paused));
+      this.keys.ESC.on('down', () => this.setPaused(true));
       if (this.options.mode === 'community' || this.options.mode === 'race') {
         await this.connect();
         if (this.disposed) return;
@@ -1066,7 +1067,7 @@ export class OriginalScene extends Phaser.Scene {
       if (animation) npc.sprite.setFrame(String(animation.sprite_index));
     }
   }
-  private playSound(key: string) {
+  playSound(key: string) {
     if (this.cache.audio.exists(key) && !this.sound.locked)
       this.sound.play(key, { volume: 0.6 });
   }
@@ -1283,10 +1284,16 @@ export class OriginalScene extends Phaser.Scene {
   }
   setPaused(paused: boolean) {
     if (!this.ready || this.completed) return;
+    if (paused && !this.paused) this.playSound('audio/gui_sfx/menu_open');
     this.paused = paused;
     this.accumulator = 0;
     this.touch = { left: false, right: false, jump: false };
     this.input.keyboard?.resetKeys();
+    if (this.input.keyboard) {
+      this.input.keyboard.enabled = !paused;
+      // DOM menus own keyboard events while the game is paused.
+      this.input.keyboard.manager.enabled = !paused;
+    }
     if (paused && this.room)
       this.room.send('input', {
         left: false,

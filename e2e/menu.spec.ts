@@ -1,3 +1,4 @@
+import { exitGame } from './helpers/gameMenu';
 import { test, expect, Page } from '@playwright/test';
 import { OriginalSimulation } from '../packages/physics/src';
 import {
@@ -142,7 +143,7 @@ test('new game confirmation protects saves and replaces only the selected campai
     '0',
   );
   await page.keyboard.press('Escape');
-  await page.getByRole('link', { name: /JUMP KING/ }).click();
+  await exitGame(page);
   await expect(
     page.getByRole('complementary', { name: 'Saved session' }),
   ).toContainText('New Babe+');
@@ -381,7 +382,7 @@ test('Play Online enters the existing community and race modes', async ({
     'PLAYING',
     { timeout: 30000 },
   );
-  await page.getByRole('link', { name: /JUMP KING/ }).click();
+  await exitGame(page);
   await page.getByRole('button', { name: 'Play Online' }).click();
   await page
     .getByRole('button', { name: 'Race Arena', exact: true })

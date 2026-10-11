@@ -1,3 +1,4 @@
+import { exitGame } from './helpers/gameMenu';
 import { test, expect, Page } from '@playwright/test';
 import { OriginalSimulation } from '../packages/physics/src';
 import { ORIGINAL_SCREENS } from '../packages/maps/src';
@@ -7,7 +8,7 @@ async function openGame(page: Page, path = '/play') {
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'PLAYING',
-    { timeout: 30000 }
+    { timeout: 30000 },
   );
 }
 
@@ -23,7 +24,7 @@ test('plays without a game server, pauses, saves and continues after reload', as
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'PLAYING',
-    { timeout: 30000 }
+    { timeout: 30000 },
   );
   const state = page.getByTestId('game-state');
   await page.keyboard.down('ArrowRight');
@@ -43,9 +44,11 @@ test('plays without a game server, pauses, saves and continues after reload', as
     .poll(async () => Number(await state.getAttribute('data-y')))
     .toBeLessThan(295);
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('heading', { name: 'Tạm dừng' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Tạm dừng' }),
+  ).toBeVisible();
   const saved = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('jumpking.original.v1.original')!)
+    JSON.parse(localStorage.getItem('jumpking.original.v1.original')!),
   );
   expect(saved.state.jumps).toBe(1);
   const before = await state.getAttribute('data-y');
@@ -56,8 +59,10 @@ test('plays without a game server, pauses, saves and continues after reload', as
     timeout: 30000,
   });
   await expect(state).toHaveAttribute('data-jumps', '1');
-  await page.getByRole('link', { name: /JUMP KING/ }).click();
-  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
+  await exitGame(page);
+  await expect(
+    page.getByRole('button', { name: 'Continue', exact: true }),
+  ).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -78,15 +83,18 @@ test('jumps across the original screen boundary and loads the next screen', asyn
           state,
           bestScreen: 0,
           completed: false,
-        })
+        }),
       ),
-    simulation.getState()
+    simulation.getState(),
   );
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await openGame(page);
   await page.keyboard.down('Space');
-  await expect(page.locator('.location-bar')).toContainText('MÀN 02');
+  await expect(page.getByTestId('game-state')).toHaveAttribute(
+    'data-screen',
+    '2',
+  );
   await page.keyboard.up('Space');
   expect(errors).toEqual([]);
 });
@@ -97,7 +105,7 @@ test('landing at the original finish saves completion and shows the ending', asy
   const simulation = new OriginalSimulation(
     ORIGINAL_SCREENS,
     336,
-    110 - 42 * 360
+    110 - 42 * 360,
   );
   for (let i = 0; i < 30; i++)
     simulation.tick({ left: false, right: false, jump: false });
@@ -112,35 +120,38 @@ test('landing at the original finish saves completion and shows the ending', asy
           state,
           bestScreen: 42,
           completed: false,
-        })
+        }),
       ),
-    simulation.getState()
+    simulation.getState(),
   );
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/play');
-  await expect(page.getByRole('button', { name: 'Bỏ qua cắt cảnh' })).toBeVisible({ timeout: 30000 });
+  await expect(
+    page.getByRole('button', { name: 'Bỏ qua cắt cảnh' }),
+  ).toBeVisible({ timeout: 30000 });
   await page.getByRole('button', { name: 'Bỏ qua cắt cảnh' }).click();
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'COMPLETE',
-    { timeout: 30000 }
+    { timeout: 30000 },
   );
   await expect(
-    page.getByRole('heading', { name: 'Chinh phục đỉnh tháp' })
+    page.getByRole('heading', { name: 'Chinh phục đỉnh tháp' }),
   ).toBeVisible();
   expect(
     await page.evaluate(
       () =>
         JSON.parse(localStorage.getItem('jumpking.original.v1.original')!)
-          .completed
-    )
+          .completed,
+    ),
   ).toBe(true);
   expect(
-    await page.evaluate(() =>
-      JSON.parse(localStorage.getItem('jumpking.original.v1.original')!)
-        .state.adventure.inventory.Crown
-    )
+    await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem('jumpking.original.v1.original')!)
+          .state.adventure.inventory.Crown,
+    ),
   ).toBe(1);
   expect(errors).toEqual([]);
 });
@@ -154,16 +165,18 @@ test('automatically releases a full charge and handles repeated scene mounting',
   await page.keyboard.down('Space');
   await expect
     .poll(async () =>
-      Number(await page.getByTestId('game-state').getAttribute('data-jumps'))
+      Number(
+        await page.getByTestId('game-state').getAttribute('data-jumps'),
+      ),
     )
     .toBe(1);
   await page.keyboard.up('Space');
-  await page.getByRole('link', { name: /JUMP KING/ }).click();
+  await exitGame(page);
   await page.getByRole('button', { name: 'Press SPACE to start' }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
-    'PLAYING'
+    'PLAYING',
   );
   await expect(page.locator('canvas')).toHaveCount(1);
   expect(errors).toEqual([]);
@@ -179,7 +192,9 @@ for (const campaign of ['nbp', 'ghost']) {
     await page.keyboard.down('Space');
     await expect
       .poll(async () =>
-        Number(await page.getByTestId('game-state').getAttribute('data-jumps'))
+        Number(
+          await page.getByTestId('game-state').getAttribute('data-jumps'),
+        ),
       )
       .toBe(1);
     await page.keyboard.up('Space');
@@ -216,7 +231,7 @@ test('touch controls move and jump without overflowing a phone screen', async ({
     });
     await expect
       .poll(async () =>
-        Number(await page.getByTestId('game-state').getAttribute('data-x'))
+        Number(await page.getByTestId('game-state').getAttribute('data-x')),
       )
       .toBeGreaterThan(240);
     await session.send('Input.dispatchTouchEvent', {
@@ -237,7 +252,9 @@ test('touch controls move and jump without overflowing a phone screen', async ({
     });
     await expect
       .poll(async () =>
-        Number(await page.getByTestId('game-state').getAttribute('data-charge'))
+        Number(
+          await page.getByTestId('game-state').getAttribute('data-charge'),
+        ),
       )
       .toBeGreaterThan(0.2);
     await session.send('Input.dispatchTouchEvent', {
@@ -246,13 +263,15 @@ test('touch controls move and jump without overflowing a phone screen', async ({
     });
     await expect
       .poll(async () =>
-        Number(await page.getByTestId('game-state').getAttribute('data-jumps'))
+        Number(
+          await page.getByTestId('game-state').getAttribute('data-jumps'),
+        ),
       )
       .toBe(1);
     expect(
       await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth
-      )
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
     ).toBe(true);
     expect(errors).toEqual([]);
   } finally {
@@ -274,26 +293,30 @@ test('community players are synchronized and leaving removes the session', async
     await openGame(p1, '/community');
     await openGame(p2, '/community');
     await expect(p1.getByTestId('player-count')).toHaveText(
-      '● 2 người trong phòng'
+      '● 2 người trong phòng',
     );
     await expect(p2.getByTestId('player-count')).toHaveText(
-      '● 2 người trong phòng'
+      '● 2 người trong phòng',
     );
     await p1.keyboard.down('Space');
     await expect
       .poll(async () =>
-        Number(await p1.getByTestId('game-state').getAttribute('data-charge'))
+        Number(
+          await p1.getByTestId('game-state').getAttribute('data-charge'),
+        ),
       )
       .toBeGreaterThan(0.2);
     await p1.keyboard.up('Space');
     await expect
       .poll(async () =>
-        Number(await p1.getByTestId('game-state').getAttribute('data-jumps'))
+        Number(
+          await p1.getByTestId('game-state').getAttribute('data-jumps'),
+        ),
       )
       .toBe(1);
-    await p2.getByRole('link', { name: /JUMP KING/ }).click();
+    await exitGame(p2);
     await expect(p1.getByTestId('player-count')).toHaveText(
-      '● 1 người trong phòng'
+      '● 1 người trong phòng',
     );
     expect(errors).toEqual([]);
   } finally {
@@ -319,13 +342,13 @@ test('a race starts only when both players are ready and accepts actual jumps', 
     await openGame(p2, new URL(p1.url()).pathname);
     await expect(p1.getByTestId('game-state')).toHaveAttribute(
       'data-status',
-      'PLAYING'
+      'PLAYING',
     );
     await p1.keyboard.down('ArrowRight');
     await p1.waitForTimeout(200);
     await p1.keyboard.up('ArrowRight');
     expect(
-      Number(await p1.getByTestId('game-state').getAttribute('data-x'))
+      Number(await p1.getByTestId('game-state').getAttribute('data-x')),
     ).toBe(231);
     await p1.getByRole('button', { name: 'Ready Up' }).click();
     await expect(p1.getByTestId('race-status')).toHaveText('WAITING');
@@ -337,7 +360,9 @@ test('a race starts only when both players are ready and accepts actual jumps', 
     await p1.keyboard.down('Space');
     await expect
       .poll(async () =>
-        Number(await p1.getByTestId('game-state').getAttribute('data-jumps'))
+        Number(
+          await p1.getByTestId('game-state').getAttribute('data-jumps'),
+        ),
       )
       .toBe(1);
     await p1.keyboard.up('Space');

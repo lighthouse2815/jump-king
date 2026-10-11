@@ -1,3 +1,4 @@
+import { openInventory, openAchievements } from './helpers/gameMenu';
 import { test, expect } from '@playwright/test';
 import { OriginalSimulation } from '../packages/physics/src';
 import { ORIGINAL_SCREENS } from '../packages/maps/src';
@@ -33,26 +34,47 @@ test('collects, equips and restores the real Cap from a legacy save', async ({
     'PLAYING',
     { timeout: 30000 },
   );
-  await expect(page.getByRole('button', { name: 'Tháo Cap' })).toBeVisible();
-  await page.keyboard.press('Escape');
+  await (
+    await openInventory(page)
+  )
+    .getByRole('button', { name: 'Cap', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Equip', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   expect(
     await page.evaluate(
       () =>
-        JSON.parse(localStorage.getItem('jumpking.original.v1.original')!).state
-          .adventure.inventory.Cap,
+        JSON.parse(localStorage.getItem('jumpking.original.v1.original')!)
+          .state.adventure.inventory.Cap,
     ),
   ).toBe(1);
-  await page.getByRole('button', { name: 'Tháo Cap' }).click();
-  await expect(page.getByRole('button', { name: 'Mặc Cap' })).toBeVisible();
+  await page.getByRole('button', { name: 'Equip', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Equip', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'false');
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Mặc Cap' })).toBeVisible();
-  await page.getByRole('button', { name: 'Mặc Cap' }).click();
-  await expect(page.getByRole('button', { name: 'Tháo Cap' })).toBeVisible();
+  await expect(page.getByTestId('game-state')).toHaveAttribute(
+    'data-status',
+    'PLAYING',
+  );
+  await (
+    await openInventory(page)
+  )
+    .getByRole('button', { name: 'Cap', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Equip', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button', { name: 'Equip', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Equip', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   expect(
     await page.evaluate(
       () =>
-        JSON.parse(localStorage.getItem('jumpking.original.v1.original')!).state
-          .adventure.inventory.Cap,
+        JSON.parse(localStorage.getItem('jumpking.original.v1.original')!)
+          .state.adventure.inventory.Cap,
     ),
   ).toBe(1);
   expect(errors).toEqual([]);
@@ -87,11 +109,16 @@ test('unlocks and retains the original Cathedral achievement when visiting its r
     'PLAYING',
     { timeout: 30000 },
   );
-  await page.keyboard.press('Escape');
+  await openAchievements(page);
   await expect(
     page.getByText('Reach the Cathedral', { exact: true }).first(),
   ).toBeVisible();
   await page.reload();
+  await expect(page.getByTestId('game-state')).toHaveAttribute(
+    'data-status',
+    'PLAYING',
+  );
+  await openAchievements(page);
   await expect(
     page.getByText('Reach the Cathedral', { exact: true }).first(),
   ).toBeVisible();
@@ -113,22 +140,33 @@ test('new games show a skippable intro and retain owned equipment across campaig
     ),
   );
   await page.getByRole('button', { name: 'Press SPACE to start' }).click();
-  await page.getByRole('button', { name: 'Other Babes', exact: true }).click();
-  await page.getByRole('button', { name: 'New Babe+', exact: true }).click();
-  await page.getByRole('navigation', { name: 'Campaign menu' })
-    .getByRole('button', { name: 'New Game', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Other Babes', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'New Babe+', exact: true })
+    .click();
+  await page
+    .getByRole('navigation', { name: 'Campaign menu' })
+    .getByRole('button', { name: 'New Game', exact: true })
+    .click();
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'CUTSCENE',
     { timeout: 30000 },
   );
-  await expect(page.getByRole('button', { name: 'Tháo Cap' })).toBeDisabled();
+  await expect(page.getByTestId('pause-screen')).toHaveCount(0);
   await page.getByRole('button', { name: 'Bỏ qua mở đầu' }).click();
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'PLAYING',
   );
-  await expect(page.getByRole('button', { name: 'Tháo Cap' })).toBeEnabled();
+  await expect(
+    (await openInventory(page)).getByRole('button', {
+      name: 'Cap',
+      exact: true,
+    }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await page.reload();
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',

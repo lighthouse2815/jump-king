@@ -50,6 +50,8 @@ Nếu bỏ `VITE_SERVER_URL`, bản deploy chỉ mở chơi đơn. Pages không 
 
 Menu mở đầu dùng nền đen, khung 4:3, logo, font Litter Lover, viền, con trỏ và nhạc từ bản gốc. Nhấn **Space/Enter** hoặc chạm **Press SPACE to start** để mở menu; dùng ↑/↓ và Space/Enter để chọn, Escape để quay lại. **Other Babes** mở New Babe+ và Ghost of the Babe; **Play Online** mở Community Tower hoặc Race Arena. **Continue** giữ save; chơi mới có xác nhận nếu chiến dịch đã có save. **Options** có âm thanh, toàn màn hình và hướng dẫn; **Extras** có credits và thống kê đã lưu. **Quit** trở lại màn tiêu đề; đóng tab để thoát trình duyệt.
 
+Trang chơi giữ bố cục 480×360, phóng theo tỉ lệ 4:3 trên nền đen. Nhấn **Escape** hoặc nút **Menu** trên điện thoại để mở menu tạm dừng: **Resume**, **Inventory**, **Options**, **Save & Exit** và **Give Up**. Kho đồ cho phép mặc/tháo vật phẩm đã sở hữu; thống kê chỉ hiện khi tạm dừng. **Options → Graphics → Display Timer** bật đồng hồ, mặc định tắt; **Audio** lưu lựa chọn âm thanh. Chơi mới và thoát có xác nhận; multiplayer dùng **Leave Room**, phòng vẫn tiếp tục chạy khi mở menu.
+
 - Trái/phải hoặc A/D: đi bộ và chọn hướng nhảy.
 - Giữ Space, W hoặc mũi tên lên: tích lực; thả để nhảy; tự nhảy khi đầy lực sau 0,6 giây.
 - Không đổi hướng trên không; va tường làm bật lại.
@@ -61,7 +63,7 @@ Menu mở đầu dùng nền đen, khung 4:3, logo, font Litter Lover, viền, c
 
 ### Tự tham quan bằng mã cheat
 
-Trong **Chơi đơn**, mở **Chạy thử tự động**, nhập **`AUTOKING`** và bấm **Kích hoạt tự chơi**. Game tự tham quan đủ 169 màn của ba chiến dịch, tiếp cận vật phẩm/NPC, cấp tiền để thử cả 5 thương nhân, chạy 4 nhiệm vụ chim, mở đầu và cả 6 biến thể kết thúc. Chọn tốc độ 1×–64×; có tạm dừng/tiếp tục và **Dừng tự chơi, trở lại save**.
+Trong **Chơi đơn**, nhấn **Escape → Options → Developer** (điện thoại: **Menu → Options → Developer**), nhập **`AUTOKING`** và bấm **Kích hoạt tự chơi**. Game tự tham quan đủ 169 màn của ba chiến dịch, tiếp cận vật phẩm/NPC, cấp tiền để thử cả 5 thương nhân, chạy 4 nhiệm vụ chim, mở đầu và cả 6 biến thể kết thúc. Chọn tốc độ 1×–64×; có tạm dừng/tiếp tục và **Dừng tự chơi, trở lại save**.
 
 Đây là phiên cheat riêng dùng dịch chuyển tới vùng kích hoạt và logic tương tác thực tế. Save, kho đồ và thành tích của người chơi được giữ nguyên. Báo cáo mỗi chiến dịch ghi số màn, lần nhặt vật phẩm, NPC, giao dịch, nhiệm vụ chim và cắt cảnh đã chạy; bước không tương tác thành công sẽ báo lỗi. Các nhánh hội thoại theo điều kiện, biến thể giá mua và thử thách thành tích vẫn cần kiểm tra riêng. Chế độ này chỉ có trong chơi đơn.
 
@@ -98,4 +100,4 @@ node scripts/import-original-details.cjs /path/to/LanguageJK.language.en-US.resx
 
 Map, sprite và âm thanh được chuyển trực tiếp từ dữ liệu gốc. Vật lý được chuyển từ logic của bản 1.04 và nằm trong `packages/physics`, dùng chung giữa trình duyệt và server.
 
-Đây là bản chuyển sang web có giao diện chơi và multiplayer riêng. Menu mở đầu dùng logo, font, viền, con trỏ và nhạc gốc; thêm Play Online và điều chỉnh Options/Quit cho trình duyệt. Thành tích có mã/điều kiện của bản 1.04, dùng tên mô tả tiếng Anh và lưu cục bộ; chưa đồng bộ Steam/GOG. Việc chọn DLC trực tiếp từ menu khác luồng mở DLC của bản Windows; các hiệu ứng ngẫu nhiên không dùng cùng chuỗi random của executable. Chưa có kiểm tra đối chiếu từng khung hình hoặc phát lại toàn bộ hai DLC, vì vậy không khẳng định tương đương 100% toàn bộ game.
+Đây là bản chuyển sang web. Menu mở đầu, khung chơi 4:3 và menu tạm dừng theo bố cục bản gốc, dùng logo, font, viền, con trỏ, checkbox và âm thanh gốc; thêm Play Online, điều khiển cảm ứng và công cụ Developer, điều chỉnh Options/Quit cho trình duyệt. Thành tích có mã/điều kiện của bản 1.04, dùng tên mô tả tiếng Anh và lưu cục bộ; chưa đồng bộ Steam/GOG. Việc chọn DLC trực tiếp từ menu khác luồng mở DLC của bản Windows; các hiệu ứng ngẫu nhiên không dùng cùng chuỗi random của executable. Chưa có kiểm tra đối chiếu từng khung hình hoặc phát lại toàn bộ hai DLC, vì vậy không khẳng định tương đương 100% toàn bộ game.

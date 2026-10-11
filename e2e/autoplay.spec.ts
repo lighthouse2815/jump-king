@@ -1,13 +1,16 @@
+import { openDeveloper, openInventory } from './helpers/gameMenu';
 import { test, expect, Page } from '@playwright/test';
 import { createOriginalAchievementProgress } from '../packages/physics/src';
 
 async function enterCheat(page: Page, code: string) {
-  await page.getByText('Chạy thử tự động', { exact: true }).click();
+  await openDeveloper(page);
   await page.getByLabel('Mã cheat', { exact: true }).fill(code);
   await page.getByRole('button', { name: 'Kích hoạt tự chơi' }).click();
 }
 
-test('incorrect code leaves the current solo run intact', async ({ page }) => {
+test('incorrect code leaves the current solo run intact', async ({
+  page,
+}) => {
   await page.goto('/play');
   const game = page.getByTestId('game-state');
   await expect(game).toHaveAttribute('data-status', 'PLAYING');
@@ -53,12 +56,14 @@ test('AUTOKING pauses, resumes, tours all three campaigns, and preserves saves',
     ),
   );
   await expect(game).toHaveAttribute('data-status', 'PLAYING');
-  await page.getByRole('button', { name: 'Tạm dừng', exact: true }).click();
+  await page.keyboard.press('Escape');
   const progress = await game.getAttribute('data-replay-progress');
   await page.waitForTimeout(350);
   await expect(game).toHaveAttribute('data-replay-progress', progress!);
-  await page.getByRole('button', { name: 'Tiếp tục', exact: true }).click();
-  await page.getByLabel('Tốc độ chạy thử', { exact: true }).selectOption('64');
+  await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  await page
+    .getByLabel('Tốc độ chạy thử', { exact: true })
+    .selectOption('64');
   const results = page.getByTestId('autoplay-results');
   await expect(results.locator('[data-campaign="original"]')).toContainText(
     '46 màn',
@@ -114,7 +119,12 @@ test('AUTOKING pauses, resumes, tours all three campaigns, and preserves saves',
   await expect(game).toHaveAttribute('data-status', 'PLAYING');
   await expect(game).toHaveAttribute('data-x', '231');
   await expect(game).toHaveAttribute('data-jumps', '0');
-  await expect(page.getByRole('button', { name: 'Tháo Cap' })).toBeVisible();
+  await expect(
+    (await openInventory(page)).getByRole('button', {
+      name: 'Cap',
+      exact: true,
+    }),
+  ).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('cheat entry fits a phone screen and stopping immediately restores the solo run', async ({
