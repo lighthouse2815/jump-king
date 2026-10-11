@@ -39,7 +39,7 @@ export function OriginalGamePage({
   const id = params.get('campaign') || 'original';
   const campaign: CampaignId = Object.prototype.hasOwnProperty.call(
     CAMPAIGNS,
-    id
+    id,
   )
     ? (id as CampaignId)
     : 'original';
@@ -51,7 +51,7 @@ export function OriginalGamePage({
   const [generation, setGeneration] = useState(0);
   const fresh = useRef(false);
   const [muted, setMuted] = useState(
-    () => localStorage.getItem('jumpking.muted') === 'true'
+    () => localStorage.getItem('jumpking.muted') === 'true',
   );
   const [notice, setNotice] = useState('');
 
@@ -65,6 +65,7 @@ export function OriginalGamePage({
       muted,
       mode,
       roomId,
+      intro: params.get('new') === '1',
       onUi: (state) => {
         if (active) setUi(state);
       },
@@ -102,7 +103,7 @@ export function OriginalGamePage({
   const restart = () => {
     if (
       window.confirm(
-        'Bắt đầu lại màn chơi này từ đầu? Tiến trình hiện tại sẽ được thay thế.'
+        'Bắt đầu lại màn chơi này từ đầu? Tiến trình hiện tại sẽ được thay thế.',
       )
     ) {
       fresh.current = true;
@@ -177,6 +178,20 @@ export function OriginalGamePage({
             data-charge={ui.charge}
           >
             <div ref={mount} className="phaser-mount" />
+            {ui.status === 'CUTSCENE' && (
+              <button
+                className="menu-button cutscene-skip"
+                disabled={!ui.cutsceneReady}
+                onClick={() => scene.current?.skipCutscene()}
+              >
+                Bỏ qua {ui.cutscene === 'intro' ? 'mở đầu' : 'cắt cảnh'}
+              </button>
+            )}
+            {ui.achievementNotice && (
+              <div className="achievement-toast" role="status">
+                🏆 {ui.achievementNotice}
+              </div>
+            )}
             {ui.status === 'LOADING' && (
               <div className="game-overlay">
                 <p>Đang tải màn chơi…</p>
@@ -308,6 +323,49 @@ export function OriginalGamePage({
               ? '● Tự động lưu trong trình duyệt'
               : `● ${ui.players} người trong phòng`}
           </p>
+          <details className="inventory-panel" open>
+            <summary>Vật phẩm · {ui.inventory?.length || 0}</summary>
+            {!ui.inventory?.length && (
+              <p className="quiet-text">
+                Tìm vật phẩm và gặp thương nhân trong hành trình.
+              </p>
+            )}
+            <ul>
+              {ui.inventory?.map(
+                ({ item, label, count, wearable, equipped }) => (
+                  <li key={item}>
+                    <span>
+                      {label}
+                      {count > 1 ? ` ×${count}` : ''}
+                    </span>
+                    {wearable && (
+                      <button
+                        aria-label={`${equipped ? 'Tháo' : 'Mặc'} ${label}`}
+                        aria-pressed={equipped}
+                        disabled={ui.status !== 'PLAYING'}
+                        onClick={() =>
+                          scene.current?.setEquipped(item, !equipped)
+                        }
+                      >
+                        {equipped ? 'Tháo' : 'Mặc'}
+                      </button>
+                    )}
+                  </li>
+                ),
+              )}
+            </ul>
+          </details>
+          <details className="inventory-panel" open>
+            <summary>Thành tích · {ui.achievements?.length || 0}/48</summary>
+            <p className="quiet-text">Lưu trong trình duyệt.</p>
+            <ul>
+              {ui.achievements?.map((achievement) => (
+                <li key={achievement.id} title={achievement.description}>
+                  <span>{achievement.name}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
           {mode === 'race' && (
             <div className="race-panel">
               <p data-testid="race-status">{ui.raceStatus || 'CONNECTING'}</p>

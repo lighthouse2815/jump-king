@@ -118,6 +118,8 @@ test('landing at the original finish saves completion and shows the ending', asy
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/play');
+  await expect(page.getByRole('button', { name: 'Bỏ qua cắt cảnh' })).toBeVisible({ timeout: 30000 });
+  await page.getByRole('button', { name: 'Bỏ qua cắt cảnh' }).click();
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'COMPLETE',

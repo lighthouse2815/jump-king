@@ -1,4 +1,4 @@
-import { OriginalState } from '@jump-king/physics';
+import { OriginalState, OriginalWorldEventsState } from '@jump-king/physics';
 import { CampaignId, CAMPAIGNS } from '@jump-king/maps';
 
 export interface SoloSave {
@@ -8,6 +8,8 @@ export interface SoloSave {
   bestScreen: number;
   completed: boolean;
   npcProgress?: Record<string, number>;
+  runId?: string;
+  worldEvents?: OriginalWorldEventsState;
 }
 export const saveKey = (campaign: CampaignId) =>
   `jumpking.original.v1.${campaign}`;

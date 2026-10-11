@@ -3,6 +3,7 @@ import {
   CAMPAIGNS,
   CampaignId,
   ORIGINAL_SCREENS,
+  ORIGINAL_ADVENTURE,
   isOriginalFinish,
 } from '@jump-king/maps';
 import {
@@ -10,6 +11,10 @@ import {
   ORIGINAL_PHYSICS,
   OriginalState,
   PlayerInput,
+  OriginalWorldEvents,
+  OriginalWorldEvent,
+  ORIGINAL_ACHIEVEMENTS,
+  evaluateOriginalAchievements,
 } from '@jump-king/physics';
 import { Room } from 'colyseus.js';
 import { OriginalTowerState } from '@jump-king/protocol';
@@ -23,9 +28,32 @@ import {
   asArray,
 } from '../originalAssets';
 import { readSave, saveKey } from '../soloSave';
+import {
+  readProgress,
+  profileAdventure,
+  progressKey,
+  itemLabels,
+} from '../originalProgress';
+import { OriginalAdventureVisuals } from '../OriginalAdventureVisuals';
+import {
+  OriginalCutscenes,
+  ORIGINAL_CUTSCENE_TEXTURE_KEYS,
+  ORIGINAL_CUTSCENE_SOUND_KEYS,
+} from '../OriginalCutscenes';
 
 export interface OriginalUi {
-  status: 'LOADING' | 'PLAYING' | 'COMPLETE' | 'ERROR';
+  status: 'LOADING' | 'PLAYING' | 'CUTSCENE' | 'COMPLETE' | 'ERROR';
+  cutscene?: 'intro' | 'ending';
+  cutsceneReady?: boolean;
+  inventory?: {
+    item: string;
+    label: string;
+    count: number;
+    wearable: boolean;
+    equipped: boolean;
+  }[];
+  achievements?: { id: string; name: string; description: string }[];
+  achievementNotice?: string;
   location: string;
   screen: number;
   best: number;
@@ -52,6 +80,7 @@ export interface OriginalSceneOptions {
   onUi: (state: OriginalUi) => void;
   mode?: 'solo' | 'community' | 'race';
   roomId?: string;
+  intro?: boolean;
 }
 
 const frameNames = [
@@ -99,6 +128,15 @@ export class OriginalScene extends Phaser.Scene {
   private gamepadPause = false;
   private progress = 0;
   private room: Room<OriginalTowerState> | null = null;
+  private profile = readProgress();
+  private runId: string = crypto.randomUUID();
+  private achievementNotice = '';
+  private achievementNoticeAt = 0;
+  private worldEvents!: OriginalWorldEvents;
+  private worldClock = 0;
+  private effects?: OriginalAdventureVisuals;
+  private cutscenes?: OriginalCutscenes;
+  private activeCutscene?: 'intro' | 'ending';
   private peers = new Map<string, Phaser.GameObjects.Sprite>();
   private sequence = 0;
   private pending: (PlayerInput & { seq: number })[] = [];
@@ -115,6 +153,7 @@ export class OriginalScene extends Phaser.Scene {
     talking: boolean;
   }[] = [];
   private walls: {
+    id: string;
     info: OriginalWall;
     image: Phaser.GameObjects.Image;
     touched: boolean;
@@ -143,7 +182,7 @@ export class OriginalScene extends Phaser.Scene {
     this.load.json('originalManifest', originalUrl('manifest.json'));
     this.load.json('originalDetails', originalUrl('details.json'));
     this.load.on('loaderror', (file: Phaser.Loader.File) =>
-      this.fail(`Không tải được ${file.key}.`)
+      this.fail(`Không tải được ${file.key}.`),
     );
   }
 
@@ -160,7 +199,11 @@ export class OriginalScene extends Phaser.Scene {
     this.simulation = new OriginalSimulation(
       ORIGINAL_SCREENS,
       campaign.spawnX,
-      campaign.spawnY - campaign.startScreen * 360
+      campaign.spawnY - campaign.startScreen * 360,
+      ORIGINAL_ADVENTURE,
+      !this.options.mode || this.options.mode === 'solo'
+        ? profileAdventure(this.profile)
+        : undefined,
     );
     const save =
       this.options.fresh ||
@@ -170,10 +213,63 @@ export class OriginalScene extends Phaser.Scene {
         : readSave(this.options.campaign);
     if (save) {
       this.simulation.restore(save.state);
+      if (
+        save.state.adventure &&
+        (this.profile.achievements.run ||
+          Object.keys(this.profile.inventory).length ||
+          this.profile.flags.length)
+      )
+        this.simulation.adventure!.restore({
+          ...save.state.adventure,
+          inventory: this.profile.inventory,
+          equipped: this.profile.equipped,
+          flags: [
+            ...new Set([...save.state.adventure.flags, ...this.profile.flags]),
+          ],
+        });
+      this.runId = save.runId || this.runId;
       this.completed = save.completed;
       this.best = save.bestScreen;
       this.npcProgress = save.npcProgress || {};
     } else this.best = this.simulation.screen;
+    if (this.options.campaign === 'nbp')
+      this.simulation.adventure!.flag('StartedNBP');
+    if (this.options.campaign === 'ghost')
+      this.simulation.adventure!.flag('StartedGhost');
+    this.worldEvents = new OriginalWorldEvents({
+      walls: Object.entries(this.details.walls).flatMap(([screen, walls]) =>
+        walls.map((wall, index) => ({
+          id: `${screen}:${index}`,
+          screen: Number(screen),
+          texture: wall.texture,
+          position: {
+            x: wall.position.X,
+            y: wall.position.Y - Number(screen) * 360,
+          },
+          hitboxes: wall.hitboxes.map((box) => ({
+            x: box.X + (wall.screenCoordinates ? 0 : wall.position.X),
+            y:
+              box.Y +
+              (wall.screenCoordinates ? 0 : wall.position.Y) -
+              Number(screen) * 360,
+            width: box.Width,
+            height: box.Height,
+          })),
+          appearSound: wall.appearSound,
+          disappearSound: wall.disappearSound,
+          playMode: wall.playMode,
+        })),
+      ),
+    });
+    if (save?.worldEvents) {
+      try {
+        this.worldEvents.restore(save.worldEvents);
+        this.worldClock = save.worldEvents.lastTick || 0;
+      } catch {
+        this.saveError =
+          'Sự kiện màn chơi đã được khởi tạo lại vì save không hợp lệ.';
+      }
+    }
     this.sound.setMute(this.options.muted);
     this.emitUi();
     try {
@@ -181,16 +277,36 @@ export class OriginalScene extends Phaser.Scene {
         (key) =>
           key.startsWith('audio/jump_king/') ||
           ['audio/new_location', 'audio/talking', 'audio/illusion'].includes(
-            key
-          )
+            key,
+          ),
       );
-      await this.loadKeys(['king/base', campaign.ending], audio);
+      const worldSounds = Object.keys(this.manifest.sounds).filter(
+        (key) =>
+          key.startsWith('audio/event_sfx/') ||
+          key.startsWith('audio/music/event_music/'),
+      );
+      await this.loadKeys(
+        [
+          ...ORIGINAL_CUTSCENE_TEXTURE_KEYS,
+          ...Object.values(ORIGINAL_ADVENTURE.itemTextures),
+          ...ORIGINAL_ADVENTURE.birds.map((bird) => bird.texture),
+          'ending/flying_gargoyle',
+        ],
+        [...audio, ...worldSounds, 'audio/plink'],
+      );
       await this.loadScreen(this.simulation.screen);
       if (this.disposed) return;
       this.children.removeAll(true);
       const texture = this.textures.get('king/base');
       frameNames.forEach((name, i) =>
-        texture.add(name, 0, 224 + (i % 4) * 48, Math.floor(i / 4) * 48, 48, 48)
+        texture.add(
+          name,
+          0,
+          224 + (i % 4) * 48,
+          Math.floor(i / 4) * 48,
+          48,
+          48,
+        ),
       );
       texture.add('babe', 0, 96, 0, 32, 32);
       texture.add('nbp_babe', 0, 416, 80, 32, 40);
@@ -199,8 +315,9 @@ export class OriginalScene extends Phaser.Scene {
         .sprite(0, 0, 'king/base', 'idle')
         .setOrigin(0.5, 1)
         .setDepth(10);
+      this.effects = new OriginalAdventureVisuals(this, this.manifest);
       this.keys = this.input.keyboard!.addKeys(
-        'LEFT,RIGHT,A,D,SPACE,UP,W,ESC'
+        'LEFT,RIGHT,A,D,SPACE,UP,W,ESC',
       ) as Record<string, Phaser.Input.Keyboard.Key>;
       this.keys.ESC.on('down', () => this.setPaused(!this.paused));
       if (this.options.mode === 'community' || this.options.mode === 'race') {
@@ -214,8 +331,32 @@ export class OriginalScene extends Phaser.Scene {
       this.ready = true;
       this.renderScreen(this.simulation.screen);
       this.renderPlayer();
+      this.recordAchievements(this.completed);
       this.emitUi();
-      if (this.completed) this.showEnding();
+      if (this.completed) void this.showEnding(true);
+      else if (
+        (this.options.intro || this.options.fresh) &&
+        !save &&
+        (!this.options.mode || this.options.mode === 'solo')
+      ) {
+        this.activeCutscene = 'intro';
+        this.ready = false;
+        this.emitUi();
+        await this.loadKeys([], ['audio/music/opening theme']);
+        if (this.disposed) return;
+        this.cutscenes = new OriginalCutscenes(this, this.options.campaign, {
+          onComplete: () => {
+            this.activeCutscene = undefined;
+            this.ready = true;
+            this.accumulator = 0;
+            this.input.keyboard?.resetKeys();
+            this.persist();
+            this.emitUi();
+          },
+        });
+        this.cutscenes.playIntro({ newGame: true });
+        this.emitUi();
+      }
       this.prefetch();
     } catch (error) {
       this.fail(error instanceof Error ? error.message : String(error));
@@ -230,6 +371,8 @@ export class OriginalScene extends Phaser.Scene {
     window.removeEventListener('blur', this.blur);
     document.removeEventListener('visibilitychange', this.visibility);
     this.stopAmbience();
+    this.cutscenes?.destroy();
+    this.effects?.destroy();
     if (this.room) void this.room.leave();
   };
 
@@ -244,12 +387,12 @@ export class OriginalScene extends Phaser.Scene {
     } else if (race)
       room = await manager.client.joinById<OriginalTowerState>(
         this.options.roomId!,
-        { nickname: 'Challenger' }
+        { nickname: 'Challenger' },
       );
     else
       room = await manager.client.joinOrCreate<OriginalTowerState>(
         'original_tower',
-        { campaign: this.options.campaign, nickname: 'Player' }
+        { campaign: this.options.campaign, nickname: 'Player' },
       );
     if (this.disposed) {
       await room.leave();
@@ -260,7 +403,7 @@ export class OriginalScene extends Phaser.Scene {
       if (!this.disposed) this.fail('Đã mất kết nối tới phòng chơi.');
     });
     room.onError((_code, message) =>
-      this.fail(message || 'Lỗi kết nối tới server.')
+      this.fail(message || 'Lỗi kết nối tới server.'),
     );
     const reconcile = () => {
       if (this.disposed) return;
@@ -269,18 +412,19 @@ export class OriginalScene extends Phaser.Scene {
       if (player?.snapshot) {
         const snapshot: OriginalState = JSON.parse(player.snapshot);
         this.pending = this.pending.filter(
-          (input) => input.seq > player.lastProcessedInputSeq
+          (input) => input.seq > player.lastProcessedInputSeq,
         );
         this.simulation.restore(snapshot);
         for (const input of this.pending)
           this.simulation.tick(
             this.canMove
               ? input
-              : { ...input, left: false, right: false, jump: false }
+              : { ...input, left: false, right: false, jump: false },
           );
         if (player.finished && !this.completed) {
+          this.recordAchievements(true, JSON.parse(player.finishEquipment));
           this.completed = true;
-          this.showEnding();
+          void this.showEnding(false, JSON.parse(player.finishEquipment));
         }
       }
       for (const [id, peer] of room.state.players.entries()) {
@@ -310,20 +454,22 @@ export class OriginalScene extends Phaser.Scene {
                   ? 'bounce'
                   : state.vy < 0
                     ? 'up'
-                    : 'fall'
+                    : 'fall',
         );
+        this.effects?.dress(id, sprite, state.adventure?.equipped || []);
       }
       for (const [id, sprite] of this.peers)
         if (!room.state.players.has(id)) {
           sprite.destroy();
           this.peers.delete(id);
+          this.effects?.removePlayer(id);
         }
       this.emitUi();
     };
     room.onStateChange(reconcile);
     if (!room.state.players.has(room.sessionId))
       await new Promise<void>((resolve) =>
-        room.onStateChange.once(() => resolve())
+        room.onStateChange.once(() => resolve()),
       );
     if (!this.disposed) reconcile();
   }
@@ -332,7 +478,7 @@ export class OriginalScene extends Phaser.Scene {
     if (!this.room || this.room.state.status !== 'WAITING') return;
     this.room.send(
       'ready',
-      !this.room.state.players.get(this.room.sessionId)?.ready
+      !this.room.state.players.get(this.room.sessionId)?.ready,
     );
   }
 
@@ -383,7 +529,7 @@ export class OriginalScene extends Phaser.Scene {
             else resolve();
           });
           this.load.start();
-        })
+        }),
     );
     this.queue = operation.catch(() => {});
     return operation;
@@ -393,7 +539,7 @@ export class OriginalScene extends Phaser.Scene {
     const data = this.manifest.screens[screen];
     const textures = [
       ...data.layers,
-      ...data.props
+      ...this.screenProps(screen)
         .map((prop) => prop.texture)
         .filter((key): key is string => !!key),
     ];
@@ -402,8 +548,8 @@ export class OriginalScene extends Phaser.Scene {
     for (const weather of data.weather)
       textures.push(
         ...Object.keys(this.manifest.textures).filter((key) =>
-          key.startsWith(`particles/${weather.name}/`)
-        )
+          key.startsWith(`particles/${weather.name}/`),
+        ),
       );
     const mask = `screens/masks/${screen + 1}`;
     if (this.manifest.textures[mask]) textures.push(mask);
@@ -413,20 +559,29 @@ export class OriginalScene extends Phaser.Scene {
     textures.push(
       ...this.details.npcs
         .filter((npc) => npc.screen === screen)
-        .map((npc) => npc.texture)
+        .map((npc) => npc.texture),
     );
     textures.push(
-      ...(this.details.walls[screen] || []).map((wall) => wall.texture)
+      ...(this.details.walls[screen] || []).map((wall) => wall.texture),
     );
     return {
       textures: textures.filter((key) => !!this.manifest.textures[key]),
       sounds,
     };
   }
+  private screenProps(screen: number) {
+    const flags = this.simulation.adventure?.getState().flags || [];
+    return [
+      ...this.manifest.screens[screen].props,
+      ...(this.details.extraProps?.[screen] || []).filter(
+        (prop) => !prop.flag || flags.includes(prop.flag),
+      ),
+    ];
+  }
 
   private ambienceKey(name: string) {
     return Object.keys(this.manifest.sounds).find(
-      (key) => key.toLowerCase() === `audio/background/${name}`.toLowerCase()
+      (key) => key.toLowerCase() === `audio/background/${name}`.toLowerCase(),
     );
   }
 
@@ -442,7 +597,7 @@ export class OriginalScene extends Phaser.Scene {
       if (screen >= 0 && screen < 169) {
         // Only images are prefetched; ambience is decoded when entering the screen.
         void this.loadKeys(this.screenKeys(screen).textures).catch((error) =>
-          this.fail(error.message)
+          this.fail(error.message),
         );
       }
     }
@@ -466,10 +621,10 @@ export class OriginalScene extends Phaser.Scene {
           ? 3
           : 0;
       this.visuals.push(
-        this.add.image(0, top, key).setOrigin(0).setDepth(depth)
+        this.add.image(0, top, key).setOrigin(0).setDepth(depth),
       );
     }
-    for (const prop of data.props) {
+    for (const prop of this.screenProps(screen)) {
       if (!prop.texture) continue;
       const info = this.manifest.textures[prop.texture];
       const texture = this.textures.get(prop.texture);
@@ -483,7 +638,7 @@ export class OriginalScene extends Phaser.Scene {
             (i % prop.cells.X) * w,
             Math.floor(i / prop.cells.X) * h,
             w,
-            h
+            h,
           );
       const animation = `prop:${prop.texture}`;
       if (!this.anims.exists(animation))
@@ -497,7 +652,7 @@ export class OriginalScene extends Phaser.Scene {
               ...(prop.durations[i]
                 ? { duration: prop.durations[i] * 1000 }
                 : {}),
-            })
+            }),
           ),
           frameRate: prop.fps,
           repeat: -1,
@@ -506,8 +661,9 @@ export class OriginalScene extends Phaser.Scene {
         this.add
           .sprite(prop.Position.X, prop.Position.Y + top, prop.texture, '0')
           .setOrigin(0)
+          .setFlipX(!!prop.flipped)
           .setDepth(4)
-          .play(animation)
+          .play(animation),
       );
     }
     const scrolling = data.scrolling?.ScrollingBGdata;
@@ -527,7 +683,7 @@ export class OriginalScene extends Phaser.Scene {
     }
     for (const weather of data.weather) {
       const keys = Object.keys(this.manifest.textures).filter((key) =>
-        key.startsWith(`particles/${weather.name}/`)
+        key.startsWith(`particles/${weather.name}/`),
       );
       if (!keys.length) continue;
       const weatherSprite = this.add
@@ -550,7 +706,7 @@ export class OriginalScene extends Phaser.Scene {
             weatherSprite.setTexture(
               keys[
                 Math.floor(this.time.now / (1000 / weather.fps)) % keys.length
-              ]
+              ],
             );
         },
       });
@@ -558,7 +714,7 @@ export class OriginalScene extends Phaser.Scene {
       this.visuals.push(weatherSprite);
     }
     for (const npc of this.details.npcs.filter(
-      (npc) => npc.screen === screen
+      (npc) => npc.screen === screen,
     )) {
       const info = this.manifest.textures[npc.texture],
         texture = this.textures.get(npc.texture);
@@ -572,7 +728,7 @@ export class OriginalScene extends Phaser.Scene {
             (i % npc.cells.X) * width,
             Math.floor(i / npc.cells.X) * height,
             width,
-            height
+            height,
           );
       const sprite = this.add
         .sprite(npc.position.X, top + npc.position.Y, npc.texture, '0')
@@ -601,12 +757,14 @@ export class OriginalScene extends Phaser.Scene {
       });
       this.visuals.push(sprite, bubble, text);
     }
-    for (const wall of this.details.walls[screen] || []) {
+    for (const [index, wall] of (this.details.walls[screen] || []).entries()) {
       const image = this.add
         .image(wall.position.X, wall.position.Y + top, wall.texture)
         .setOrigin(0)
         .setDepth(25);
-      this.walls.push({ info: wall, image, touched: false, played: false });
+      const id = `${screen}:${index}`;
+      image.setAlpha(this.worldEvents.getState().walls[id]?.alpha || 0);
+      this.walls.push({ id, info: wall, image, touched: false, played: false });
       this.visuals.push(image);
     }
     const campaign = CAMPAIGNS[this.options.campaign];
@@ -623,9 +781,9 @@ export class OriginalScene extends Phaser.Scene {
             this.options.campaign === 'nbp' ? 84 : 348,
             top + (this.options.campaign === 'original' ? 138 : 144),
             'king/base',
-            frame
+            frame,
           )
-          .setDepth(9)
+          .setDepth(9),
       );
     }
     const startAmbience = () => {
@@ -663,10 +821,13 @@ export class OriginalScene extends Phaser.Scene {
     this.player
       .setPosition(
         Math.trunc(body.position.x) + 9,
-        Math.trunc(body.position.y) + 26
+        Math.trunc(body.position.y) + 26,
       )
       .setFrame(frame)
       .setFlipX(sim.direction === -1);
+    this.effects?.dress('self', this.player, sim.adventure?.equipped || []);
+    if (sim.adventure)
+      this.effects?.sync(sim.adventure, sim.screen, this.worldClock);
   }
 
   update(_time: number, delta: number) {
@@ -720,6 +881,21 @@ export class OriginalScene extends Phaser.Scene {
         }
       }
       const event = sim.tick(input);
+      for (const adventureEvent of event.adventure) {
+        if (adventureEvent.sound) this.playSound(adventureEvent.sound);
+        else if (
+          adventureEvent.type === 'pickup' ||
+          adventureEvent.type === 'sale'
+        )
+          this.playSound('audio/plink');
+      }
+      for (const worldEvent of this.worldEvents.tick({
+        ...sim.getState(),
+        ticks: ++this.worldClock,
+      }))
+        this.applyWorldEvent(worldEvent);
+      this.effects?.tick();
+      this.recordAchievements(false);
       if (sim.jumps > jumps) this.playEffect('jump');
       if (sim.falls > falls) this.playEffect('splat');
       else if (!grounded && sim.body.isGrounded) this.playEffect('land');
@@ -732,12 +908,13 @@ export class OriginalScene extends Phaser.Scene {
           sim.body.position.x,
           sim.body.position.y,
           sim.body.isGrounded,
-          sim.screen
+          sim.screen,
         )
       ) {
+        this.recordAchievements(true);
         this.completed = true;
         this.persist();
-        this.showEnding();
+        void this.showEnding();
         this.emitUi();
         break;
       }
@@ -772,78 +949,39 @@ export class OriginalScene extends Phaser.Scene {
   }
 
   private updateDetails(delta: number) {
-    const body = this.simulation.body;
-    const player = new Phaser.Geom.Rectangle(
-      Math.trunc(body.position.x),
-      Math.trunc(body.position.y),
-      18,
-      26
-    );
-    for (const wall of this.walls) {
-      const touching = wall.info.hitboxes.some((box) => {
-        const offsetX = wall.info.screenCoordinates ? 0 : wall.info.position.X;
-        const offsetY = wall.info.screenCoordinates ? 0 : wall.info.position.Y;
-        return Phaser.Geom.Intersects.RectangleToRectangle(
-          player,
-          new Phaser.Geom.Rectangle(
-            box.X + offsetX,
-            box.Y + offsetY - this.renderedScreen * 360,
-            box.Width,
-            box.Height
-          )
-        );
-      });
-      wall.image.setAlpha(
-        Phaser.Math.Clamp(
-          wall.image.alpha + ((touching ? -1 : 1) * delta) / 200,
-          0,
-          1
-        )
-      );
-      if (touching && !wall.touched && !wall.played && !this.sound.locked) {
-        this.sound.play('audio/illusion', { volume: 0.4 });
-        wall.played = true;
-      }
-      wall.touched = touching;
-    }
+    const adventure = this.simulation.adventure!;
+    const speakers = adventure.dialogue.getState();
     for (const npc of this.npcs) {
       const info = npc.info;
-      const box = new Phaser.Geom.Rectangle(
-        info.position.X - info.trigger.center_x * info.trigger.width,
-        info.position.Y -
-          this.renderedScreen * 360 -
-          info.trigger.center_y * info.trigger.height,
-        info.trigger.width,
-        info.trigger.height
-      );
-      const touching = Phaser.Geom.Intersects.RectangleToRectangle(player, box);
-      const lines = info.quotes
-        .filter((quote) => quote.screen <= this.best + 1)
-        .flatMap((quote) => quote.lines);
-      const index = this.npcProgress[info.name] || 0;
-      const line = lines[index];
-      if (npc.busy > 0) {
-        npc.busy -= delta / 1000;
-        continue;
-      }
-      if (!npc.talking) {
-        npc.wait = touching && line ? npc.wait + delta / 1000 : 0;
-        if (npc.wait < info.delay) continue;
-        npc.talking = true;
-        npc.elapsed = 0;
-        npc.wait = 0;
-      }
+      const line =
+        adventure.merchantLine(info.name) || adventure.dialogue.line(info.name);
       if (!line) {
-        npc.talking = false;
+        npc.text.setVisible(false);
+        npc.bubble.setVisible(false);
+        const busy = speakers[info.name]?.busy || 0;
+        const duration = info.busy.reduce(
+          (sum, frame) => sum + frame.duration,
+          0,
+        );
+        let phase = duration > 0 ? ((1800 - busy) / 60) % duration : 0;
+        let frame = '0';
+        if (busy > 0)
+          for (const step of info.busy) {
+            if (phase < step.duration) {
+              frame = String(step.sprite_index);
+              break;
+            }
+            phase -= step.duration;
+          }
+        npc.sprite.setFrame(frame);
+        npc.elapsed = 0;
         continue;
       }
       npc.elapsed += delta / 1000;
-      const characters = Math.min(
-        line.length,
-        Math.floor(npc.elapsed / info.speed)
-      );
       const width = info.bubble.width || 160;
-      npc.text.setText(line.substring(0, characters)).setVisible(true);
+      npc.text
+        .setText(line.text.substring(0, line.characters))
+        .setVisible(true);
       const x = Phaser.Math.Clamp(info.position.X - width, 5, 475 - width);
       const y =
         info.position.Y - this.renderedScreen * 360 - 32 - npc.text.height;
@@ -858,17 +996,40 @@ export class OriginalScene extends Phaser.Scene {
       const animation =
         info.talking[Math.floor(npc.elapsed / 0.2) % info.talking.length];
       if (animation) npc.sprite.setFrame(String(animation.sprite_index));
-      if (npc.elapsed >= line.length * info.speed + 2.2) {
-        this.npcProgress[info.name] = index + 1;
-        npc.elapsed = 0;
-        if (index + 1 >= lines.length) {
-          npc.talking = false;
-          npc.busy = 30;
-          npc.text.setVisible(false);
-          npc.bubble.setVisible(false);
-          npc.sprite.setFrame('0');
-        }
-      }
+    }
+  }
+  private playSound(key: string) {
+    if (this.cache.audio.exists(key) && !this.sound.locked)
+      this.sound.play(key, { volume: 0.6 });
+  }
+  private applyWorldEvent(event: OriginalWorldEvent) {
+    if (event.type === 'sound') this.playSound(event.key);
+    else if (event.type === 'wall')
+      this.walls
+        .find((wall) => wall.id === event.id)
+        ?.image.setAlpha(event.alpha);
+    else this.effects?.event(event);
+  }
+  private recordAchievements(completed: boolean, equipped?: string[]) {
+    const state = this.simulation.getState();
+    const result = evaluateOriginalAchievements(
+      state,
+      this.profile.achievements,
+      {
+        ...state.adventure,
+        campaign: this.options.campaign,
+        completed,
+        runId: this.runId,
+        ...(equipped ? { equipped } : {}),
+      },
+    );
+    this.profile.achievements = result.progress;
+    if (result.newlyUnlocked.length) {
+      this.achievementNotice = result.newlyUnlocked
+        .map((id) => ORIGINAL_ACHIEVEMENTS[id].name)
+        .join(' · ');
+      this.achievementNoticeAt = this.time.now;
+      this.persist();
     }
   }
 
@@ -886,20 +1047,76 @@ export class OriginalScene extends Phaser.Scene {
       this.sound.play(key, { volume: 0.65 });
   }
 
-  private showEnding() {
+  private async showEnding(resume = false, equipped?: string[]) {
     this.stopAmbience();
-    const key =
-      this.options.campaign === 'original'
-        ? 'audio/music/ending'
-        : this.options.campaign === 'nbp'
-          ? 'audio/music/ending2'
-          : 'audio/music/ending3';
-    if (!this.sound.locked) this.streamAudio(key, false, 0.5);
-    const texture = CAMPAIGNS[this.options.campaign].ending;
-    this.add
-      .image(240, 180 - this.simulation.screen * 360, texture)
-      .setDisplaySize(480, 360)
-      .setDepth(50);
+    this.activeCutscene = 'ending';
+    this.ready = false;
+    this.paused = false;
+    this.emitUi();
+    try {
+      const music =
+        this.options.campaign === 'original'
+          ? 'audio/music/ending'
+          : this.options.campaign === 'nbp'
+            ? 'audio/music/ending2'
+            : 'audio/music/ending3';
+      await this.loadKeys(
+        [],
+        ORIGINAL_CUTSCENE_SOUND_KEYS.filter(
+          (key) => !key.startsWith('audio/music/') || key === music,
+        ),
+      );
+      if (this.disposed) return;
+      this.cutscenes?.destroy();
+      this.cutscenes = new OriginalCutscenes(this, this.options.campaign, {
+        equipped: equipped || this.simulation.adventure!.equipped,
+        ravenDone: this.simulation.adventure!.getState().birds.raven?.done,
+        tsuchinokoDone:
+          this.simulation.adventure!.getState().birds.tsuchinoko?.done,
+        player: this.player,
+        hide: [
+          ...(this.effects?.playerLayers || []),
+          ...this.visuals.filter(
+            (visual): visual is Phaser.GameObjects.Sprite =>
+              visual instanceof Phaser.GameObjects.Sprite &&
+              visual.texture.key === 'king/base',
+          ),
+        ],
+        onEquipment: (item) => {
+          if (!this.room) this.simulation.adventure!.add(item, true);
+          this.persist();
+        },
+        onComplete: () => {
+          if (!this.room)
+            this.simulation.adventure!.complete(this.options.campaign);
+          this.activeCutscene = undefined;
+          this.ready = true;
+          this.persist();
+          this.emitUi();
+        },
+      });
+      if (resume) this.cutscenes.showEndingPicture();
+      else this.cutscenes.playEnding();
+      this.emitUi();
+    } catch (error) {
+      this.fail(error instanceof Error ? error.message : String(error));
+    }
+  }
+  skipCutscene() {
+    this.cutscenes?.skip();
+  }
+  setEquipped(item: string, enabled: boolean) {
+    if (this.activeCutscene || this.completed) return;
+    if (this.room) {
+      this.room.send('equip', { item, enabled });
+      return;
+    }
+    if (this.simulation.adventure?.setEquipped(item, enabled)) {
+      this.recordAchievements(false);
+      this.renderPlayer();
+      this.persist();
+      this.emitUi();
+    }
   }
 
   private streamAudio(key: string, loop: boolean, volume: number) {
@@ -986,8 +1203,17 @@ export class OriginalScene extends Phaser.Scene {
           bestScreen: this.best,
           completed: this.completed,
           npcProgress: this.npcProgress,
-        })
+          runId: this.runId,
+          worldEvents: this.worldEvents?.getState(),
+        }),
       );
+      const adventure = this.simulation.adventure?.getState();
+      if (adventure) {
+        this.profile.inventory = adventure.inventory;
+        this.profile.equipped = adventure.equipped;
+        this.profile.flags = adventure.flags;
+        localStorage.setItem(progressKey, JSON.stringify(this.profile));
+      }
       this.saveError = '';
     } catch {
       this.saveError = 'Trình duyệt không cho phép lưu tiến trình.';
@@ -1002,7 +1228,33 @@ export class OriginalScene extends Phaser.Scene {
     const sim = this.simulation;
     const location = this.manifest?.screens[sim?.screen ?? 0]?.location || '';
     return {
-      status: this.completed ? 'COMPLETE' : this.ready ? 'PLAYING' : 'LOADING',
+      status: this.activeCutscene
+        ? 'CUTSCENE'
+        : this.completed
+          ? 'COMPLETE'
+          : this.ready
+            ? 'PLAYING'
+            : 'LOADING',
+      cutscene: this.activeCutscene,
+      cutsceneReady: this.cutscenes?.state === this.activeCutscene,
+      inventory: Object.entries(sim?.adventure?.inventory || {})
+        .filter(([, count]) => count > 0)
+        .map(([item, count]) => ({
+          item,
+          label: itemLabels[item] || item,
+          count,
+          wearable: ORIGINAL_ADVENTURE.skins.some((skin) => skin.item === item),
+          equipped: !!sim?.adventure?.equipped.includes(item),
+        })),
+      achievements: this.profile.achievements.unlocked.map((id) => ({
+        id,
+        name: ORIGINAL_ACHIEVEMENTS[id].name,
+        description: ORIGINAL_ACHIEVEMENTS[id].description,
+      })),
+      achievementNotice:
+        this.time.now - this.achievementNoticeAt < 5000
+          ? this.achievementNotice
+          : undefined,
       location:
         this.details?.locations[`LOCATION_${location.split(' ').join('_')}`] ||
         location,
@@ -1032,7 +1284,8 @@ export class OriginalScene extends Phaser.Scene {
             }))
             .sort(
               (a, b) =>
-                Number(b.finished) - Number(a.finished) || a.seconds - b.seconds
+                Number(b.finished) - Number(a.finished) ||
+                a.seconds - b.seconds,
             )
         : [],
     };

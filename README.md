@@ -1,8 +1,10 @@
 # Jump King Web
 
-Bản chơi web sử dụng dữ liệu từ bộ Jump King 1.04 được cung cấp trong workspace: 169 màn, 778 texture, 125 âm thanh, lời thoại của 27 NPC và tường ẩn của 37 màn. Bản chính có đường chơi qua đủ 43 màn, được kiểm tra bằng mô phỏng thực tế từ điểm xuất phát đến điều kiện thắng.
+Bản chơi web sử dụng dữ liệu từ bộ Jump King 1.04 được cung cấp trong workspace: 169 màn, 778 texture, 125 âm thanh, 32 NPC (gồm 5 thương nhân), 28 vật phẩm trên bản đồ, 4 nhiệm vụ đuổi chim và tường ẩn của 37 màn. Bản chính có đường chơi qua đủ 43 màn, được kiểm tra bằng mô phỏng thực tế từ điểm xuất phát đến điều kiện thắng.
 
-Chơi đơn có lưu/tiếp tục trong trình duyệt, tạm dừng, điều khiển bàn phím/tay cầm/cảm ứng, thời tiết, nhạc nền và màn kết thúc. Community Tower và Race Arena dùng cùng mô phỏng trên server Colyseus, có dự đoán và đối chiếu trạng thái phía client.
+Chơi đơn có lưu/tiếp tục trong trình duyệt, tạm dừng, điều khiển bàn phím/tay cầm/cảm ứng, thời tiết và nhạc nền. Vật phẩm, tiền, trang bị, hội thoại, giao dịch và nhiệm vụ chim dùng chung mô phỏng với server. Giant Boots ngăn đi bộ; Snake Ring làm sàn trơn. Mở đầu, cắt cảnh và ảnh kết thúc của cả ba chiến dịch dùng asset gốc, có bỏ qua; phần thưởng vẫn được trao khi bỏ qua. Bộ 48 thành tích gốc lưu trên trình duyệt. Sự kiện DLC gồm tường ẩn và âm thanh riêng, sét, gargoyle, nhạc theo vùng và đạo cụ lối vào.
+
+Community Tower và Race Arena chạy Colyseus với dự đoán và đối chiếu trạng thái phía client. Server kiểm tra quyền sở hữu khi trang bị, tự xử lý nhặt vật phẩm và giao dịch. Chơi đơn giữ kho đồ qua các chiến dịch và lần chơi mới; phòng online có kho đồ riêng trong phiên chơi.
 
 ## Chạy bản đã build
 
@@ -66,7 +68,7 @@ Kiểm tra multiplayer trực tiếp trên bản công khai, không khởi độ
 E2E_BASE_URL=https://jump-king-web.pages.dev pnpm exec playwright test e2e/original.spec.ts --grep 'community players|a race starts'
 ```
 
-Playwright tự khởi động server nếu chưa chạy. Test bao gồm chơi đơn, lưu/tiếp tục, tự nhảy, chuyển màn, điều kiện thắng, cảm ứng, hai người cùng phòng và đếm ngược đua. Test vật lý phát lại một đường đi qua đủ 43 màn bằng input hợp lệ, có đi bộ, nhảy, băng, tuyết, dốc và gió.
+Playwright tự khởi động server nếu chưa chạy. Test bao gồm chơi đơn, save cũ, nhặt/mặc/tháo/lưu vật phẩm, giữ trang bị qua chiến dịch, thành tích, mở đầu, kết thúc, cảm ứng, hai người cùng phòng và đếm ngược đua. Test cắt cảnh chạy Phaser thật qua cả sáu biến thể ảnh kết thúc; harness này chỉ chạy trên dev server. Test vật lý phát lại một đường đi qua đủ 43 màn bằng input hợp lệ, có đi bộ, nhảy, băng, tuyết, dốc và gió. Script lint hiện chưa có cấu hình ESLint trong repository.
 
 ## Nhập lại dữ liệu gốc
 
@@ -88,4 +90,4 @@ node scripts/import-original-details.cjs /path/to/LanguageJK.language.en-US.resx
 
 Map, sprite và âm thanh được chuyển trực tiếp từ dữ liệu gốc. Vật lý được chuyển từ logic của bản 1.04 và nằm trong `packages/physics`, dùng chung giữa trình duyệt và server.
 
-Đây là bản chuyển sang web có giao diện và multiplayer riêng. Chưa tái tạo đầy đủ các đoạn cắt cảnh, nhiệm vụ/vật phẩm, thành tích và một số sự kiện đặc biệt của DLC. Việc bắt đầu DLC trực tiếp trên web khác luồng mở DLC của bản Windows. Không coi việc import đủ dữ liệu là bằng chứng tương đương 100% toàn bộ game.
+Đây là bản chuyển sang web có giao diện và multiplayer riêng. Thành tích có mã/điều kiện của bản 1.04, dùng tên mô tả tiếng Anh và lưu cục bộ; chưa đồng bộ Steam/GOG. Font và giao diện menu web khác bản Windows. Việc chọn DLC trực tiếp từ menu khác luồng mở DLC của bản Windows; các hiệu ứng ngẫu nhiên không dùng cùng chuỗi random của executable. Chưa có kiểm tra đối chiếu từng khung hình hoặc phát lại toàn bộ hai DLC, vì vậy không khẳng định tương đương 100% toàn bộ game.

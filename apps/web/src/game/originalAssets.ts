@@ -4,6 +4,8 @@ export interface TextureInfo {
   height: number;
 }
 export interface OriginalProp {
+  flag?: string | null;
+  flipped?: boolean;
   type: string;
   Position: { X: number; Y: number };
   texture: string | null;
@@ -60,12 +62,16 @@ export interface OriginalNpc {
   quotes: { screen: number; lines: string[] }[];
 }
 export interface OriginalWall {
+  appearSound?: string;
+  disappearSound?: string | null;
+  playMode?: 'once' | 'every-time';
   texture: string;
   position: { X: number; Y: number };
   screenCoordinates: boolean;
   hitboxes: { X: number; Y: number; Width: number; Height: number }[];
 }
 export interface OriginalDetails {
+  extraProps?: Record<number, OriginalProp[]>;
   npcs: OriginalNpc[];
   walls: Record<number, OriginalWall[]>;
   locations: Record<string, string>;

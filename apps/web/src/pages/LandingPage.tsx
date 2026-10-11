@@ -18,7 +18,7 @@ export const LandingPage = () => {
     )
       return;
     localStorage.removeItem(saveKey(campaign));
-    navigate(`/play?campaign=${campaign}`);
+    navigate(`/play?campaign=${campaign}&new=1`);
   };
   return (
     <main className="title-page">
