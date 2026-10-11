@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "import:original": "node scripts/import-original.cjs",
     "dev": "pnpm -r run build && pnpm --filter web run dev & pnpm --filter game-server run dev",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
@@ -13,8 +14,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
+    "fast-xml-parser": "^5.11.2",
+    "pngjs": "^7.0.0",
     "prettier": "^3.2.0",
     "typescript": "^5.4.0",
-    "vitest": "^1.4.0"
+    "vitest": "^1.4.0",
+    "xnb": "1.3.0-a"
   }
 }
