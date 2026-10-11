@@ -1,6 +1,8 @@
 import originalScreens from './original-data.json';
+import originalAdventure from './original-adventure-data.json';
 
 export const ORIGINAL_SCREENS = originalScreens;
+export const ORIGINAL_ADVENTURE = originalAdventure;
 
 export const CAMPAIGNS = {
   original: {
