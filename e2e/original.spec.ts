@@ -282,6 +282,8 @@ test('touch controls move and jump without overflowing a phone screen', async ({
 test('community players are synchronized and leaving removes the session', async ({
   browser,
 }) => {
+  // Allow both 30-second client loads, gameplay and browser cleanup.
+  test.setTimeout(90000);
   const first = await browser.newContext(),
     second = await browser.newContext();
   try {
@@ -328,6 +330,7 @@ test('community players are synchronized and leaving removes the session', async
 test('a race starts only when both players are ready and accepts actual jumps', async ({
   browser,
 }) => {
+  test.setTimeout(90000);
   const first = await browser.newContext(),
     second = await browser.newContext();
   try {
@@ -339,6 +342,11 @@ test('a race starts only when both players are ready and accepts actual jumps', 
     await p1.goto('/race');
     await p1.getByRole('button', { name: 'Create New Race' }).click();
     await p1.waitForURL(/\/race\/.+/);
+    await expect(p1.getByTestId('game-state')).toHaveAttribute(
+      'data-status',
+      'PLAYING',
+      { timeout: 30000 },
+    );
     await openGame(p2, new URL(p1.url()).pathname);
     await expect(p1.getByTestId('game-state')).toHaveAttribute(
       'data-status',
