@@ -4,3 +4,5 @@ export * from './PhysicsWorld';
 export * from './PlayerController';
 export * from './OriginalSimulation';
 export * from './OriginalAdventure';
+export * from './OriginalAchievements';
+export * from './OriginalWorldEvents';
