@@ -8,6 +8,7 @@
     "start": "pnpm --filter game-server start",
     "build:cloudflare": "VITE_MULTIPLAYER_DISABLED=true pnpm build",
     "deploy:cloudflare": "pnpm build:cloudflare && wrangler pages deploy --branch main",
+    "deploy:server": "wrangler deploy --config deploy/cloudflare-server/wrangler.jsonc",
     "test:e2e": "playwright test",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",

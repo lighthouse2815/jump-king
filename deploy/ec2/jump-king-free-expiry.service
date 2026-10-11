@@ -1,0 +1,6 @@
+[Unit]
+Description=Stop Jump King EC2 before the AWS Free plan expires
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/shutdown -h now

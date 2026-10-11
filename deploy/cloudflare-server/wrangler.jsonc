@@ -1,0 +1,10 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "jump-king-server",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-11",
+  "workers_dev": true,
+  "vars": {
+    "GAME_ORIGIN": "http://ec2-47-129-183-31.ap-southeast-1.compute.amazonaws.com",
+  },
+}

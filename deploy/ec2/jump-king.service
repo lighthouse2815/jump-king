@@ -1,0 +1,17 @@
+[Unit]
+Description=Jump King multiplayer server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/opt/jump-king
+Environment=NODE_ENV=production
+Environment=PORT=2567
+Environment=NODE_OPTIONS=--max-old-space-size=256
+ExecStart=/opt/node/bin/node /opt/jump-king/build/index.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

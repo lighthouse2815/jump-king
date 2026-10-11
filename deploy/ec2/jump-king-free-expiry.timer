@@ -1,0 +1,10 @@
+[Unit]
+Description=Stop before the verified Free plan expiry on 2026-10-28
+
+[Timer]
+OnCalendar=2026-10-28 02:00:00 UTC
+Persistent=true
+Unit=jump-king-free-expiry.service
+
+[Install]
+WantedBy=timers.target

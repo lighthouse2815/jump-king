@@ -26,7 +26,7 @@ Frontend: http://localhost:3000. Server: http://localhost:2567. Khi dùng fronte
 
 Chơi tại **https://jump-king-web.pages.dev/**.
 
-Bản Pages phục vụ chơi đơn và các asset gốc, lưu tiến trình trên trình duyệt của người chơi. Community/Race hiển thị thông báo chưa mở khi chưa cấu hình backend. Lệnh chạy và build thông thường vẫn hỗ trợ multiplayer. Wrangler để triển khai yêu cầu Node.js 22 trở lên.
+Bản Pages phục vụ chơi đơn và các asset gốc, lưu tiến trình trên trình duyệt của người chơi. Community/Race đã kết nối tới server EC2 ở Singapore qua Cloudflare Worker. Wrangler để triển khai yêu cầu Node.js 22 trở lên.
 
 ```sh
 pnpm exec wrangler login
@@ -36,13 +36,13 @@ pnpm deploy:cloudflare
 
 Chỉ tạo project một lần. Cấu hình `wrangler.jsonc` trỏ tới `apps/web/dist`; Pages tự phục vụ `index.html` cho các đường dẫn React như `/play`. Cờ `--force` chỉ cần khi tạo project để tránh Wrangler tự chuyển monorepo sang dự án Workers mới; khi project đã tồn tại, lệnh deploy dùng upload trực tiếp. Toàn bộ asset được tải trực tiếp lên Cloudflare, không phụ thuộc máy đang chạy lệnh triển khai.
 
-Để mở multiplayer sau này, cấu hình URL HTTPS/WebSocket công khai của server Colyseus rồi triển khai lại:
+Triển khai lại bản có multiplayer đang hoạt động:
 
 ```sh
-VITE_SERVER_URL=wss://your-game-host.example pnpm deploy:cloudflare
+VITE_SERVER_URL=wss://jump-king-server.alexnguyena47.workers.dev pnpm deploy:cloudflare
 ```
 
-Pages không chạy tiến trình Node.js của Colyseus. Có thể dùng Cloudflare Containers khi tài khoản có Workers Paid, hoặc một backend bên ngoài. Không đặt token Cloudflare vào source code; Wrangler sử dụng thông tin đăng nhập cục bộ hoặc biến môi trường của CI.
+Nếu bỏ `VITE_SERVER_URL`, bản deploy chỉ mở chơi đơn. Pages không chạy tiến trình Node.js của Colyseus; backend dùng EC2 `t3.micro`, còn Worker chuyển tiếp matchmaking và WebSocket. Hướng dẫn SSH, cập nhật server và giới hạn Free plan nằm trong [deploy/README.md](deploy/README.md). Không đặt token Cloudflare vào source code; Wrangler sử dụng thông tin đăng nhập cục bộ hoặc biến môi trường của CI.
 
 ## Điều khiển
 
@@ -58,6 +58,12 @@ Pages không chạy tiến trình Node.js của Colyseus. Có thể dùng Cloudf
 ```sh
 pnpm test
 pnpm test:e2e
+```
+
+Kiểm tra multiplayer trực tiếp trên bản công khai, không khởi động server cục bộ:
+
+```sh
+E2E_BASE_URL=https://jump-king-web.pages.dev pnpm exec playwright test e2e/original.spec.ts --grep 'community players|a race starts'
 ```
 
 Playwright tự khởi động server nếu chưa chạy. Test bao gồm chơi đơn, lưu/tiếp tục, tự nhảy, chuyển màn, điều kiện thắng, cảm ứng, hai người cùng phòng và đếm ngược đua. Test vật lý phát lại một đường đi qua đủ 43 màn bằng input hợp lệ, có đi bộ, nhảy, băng, tuyết, dốc và gió.
