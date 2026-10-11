@@ -5,6 +5,10 @@ import {
   OriginalTowerState,
 } from '@jump-king/protocol';
 
+export const multiplayerEnabled =
+  import.meta.env.VITE_MULTIPLAYER_DISABLED !== 'true' ||
+  Boolean(import.meta.env.VITE_SERVER_URL);
+
 export class NetworkManager {
   public client: Colyseus.Client;
   public room: Colyseus.Room<GameState> | null = null;

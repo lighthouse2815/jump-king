@@ -8,3 +8,4 @@ Jump.King.v1.04/
 playwright-report/
 test-results/
 *.tsbuildinfo
+.wrangler/

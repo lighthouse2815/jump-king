@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CAMPAIGNS, CampaignId } from '@jump-king/maps';
 import { readSave, saveKey } from '../game/soloSave';
 import { originalUrl } from '../game/originalAssets';
+import { multiplayerEnabled } from '../game/networking/NetworkManager';
 
 export const LandingPage = () => {
   const navigate = useNavigate();
@@ -64,10 +65,14 @@ export const LandingPage = () => {
           >
             Game mới<span>Chơi ngay trong trình duyệt</span>
           </button>
-          <div className="online-options">
-            <Link to="/community">Community Tower ↗</Link>
-            <Link to="/race">Race Arena ↗</Link>
-          </div>
+          {multiplayerEnabled ? (
+            <div className="online-options">
+              <Link to="/community">Community Tower ↗</Link>
+              <Link to="/race">Race Arena ↗</Link>
+            </div>
+          ) : (
+            <p className="quiet-text">Bản chơi đơn · Multiplayer sẽ mở sau</p>
+          )}
         </nav>
         <p className="title-controls">
           <kbd>←</kbd> <kbd>→</kbd> di chuyển <span>·</span> <kbd>SPACE</kbd>{' '}

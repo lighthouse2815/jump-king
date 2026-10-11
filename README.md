@@ -22,6 +22,28 @@ pnpm dev
 
 Frontend: http://localhost:3000. Server: http://localhost:2567. Khi dùng frontend với server ở địa chỉ khác, đặt `VITE_SERVER_URL` trong `apps/web/.env.local`, ví dụ `wss://your-game-host.example`.
 
+## Triển khai Cloudflare Pages
+
+Chơi tại **https://jump-king-web.pages.dev/**.
+
+Bản Pages phục vụ chơi đơn và các asset gốc, lưu tiến trình trên trình duyệt của người chơi. Community/Race hiển thị thông báo chưa mở khi chưa cấu hình backend. Lệnh chạy và build thông thường vẫn hỗ trợ multiplayer. Wrangler để triển khai yêu cầu Node.js 22 trở lên.
+
+```sh
+pnpm exec wrangler login
+pnpm exec wrangler pages project create jump-king-web --force --production-branch main
+pnpm deploy:cloudflare
+```
+
+Chỉ tạo project một lần. Cấu hình `wrangler.jsonc` trỏ tới `apps/web/dist`; Pages tự phục vụ `index.html` cho các đường dẫn React như `/play`. Cờ `--force` chỉ cần khi tạo project để tránh Wrangler tự chuyển monorepo sang dự án Workers mới; khi project đã tồn tại, lệnh deploy dùng upload trực tiếp. Toàn bộ asset được tải trực tiếp lên Cloudflare, không phụ thuộc máy đang chạy lệnh triển khai.
+
+Để mở multiplayer sau này, cấu hình URL HTTPS/WebSocket công khai của server Colyseus rồi triển khai lại:
+
+```sh
+VITE_SERVER_URL=wss://your-game-host.example pnpm deploy:cloudflare
+```
+
+Pages không chạy tiến trình Node.js của Colyseus. Có thể dùng Cloudflare Containers khi tài khoản có Workers Paid, hoặc một backend bên ngoài. Không đặt token Cloudflare vào source code; Wrangler sử dụng thông tin đăng nhập cục bộ hoặc biến môi trường của CI.
+
 ## Điều khiển
 
 - Trái/phải hoặc A/D: đi bộ và chọn hướng nhảy.

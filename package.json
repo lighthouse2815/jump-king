@@ -6,6 +6,8 @@
     "import:original": "node scripts/import-original.cjs",
     "dev": "pnpm build && pnpm --parallel --filter web --filter game-server dev",
     "start": "pnpm --filter game-server start",
+    "build:cloudflare": "VITE_MULTIPLAYER_DISABLED=true pnpm build",
+    "deploy:cloudflare": "pnpm build:cloudflare && wrangler pages deploy --branch main",
     "test:e2e": "playwright test",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
@@ -21,6 +23,7 @@
     "prettier": "^3.2.0",
     "typescript": "^5.4.0",
     "vitest": "^1.4.0",
+    "wrangler": "4.149.0",
     "xnb": "1.3.0-a"
   }
 }
