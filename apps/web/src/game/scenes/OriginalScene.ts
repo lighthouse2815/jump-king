@@ -17,7 +17,7 @@ import {
   ORIGINAL_ACHIEVEMENTS,
   evaluateOriginalAchievements,
 } from '@jump-king/physics';
-import { Room } from 'colyseus.js';
+import { ErrorCode, Room } from 'colyseus.js';
 import { OriginalTowerState } from '@jump-king/protocol';
 import { networkManager } from '../networking/NetworkManager';
 import {
@@ -76,6 +76,7 @@ export interface OriginalUi {
   error?: string;
   saveError?: string;
   players: number;
+  roomId?: string;
   raceStatus?: string;
   countdown?: number;
   ready?: boolean;
@@ -436,7 +437,7 @@ export class OriginalScene extends Phaser.Scene {
     const manager = networkManager;
     const race = this.options.mode === 'race';
     const handedOff = manager.originalRoom;
-    let room: Room<OriginalTowerState>;
+    let room: Room<OriginalTowerState> | undefined;
     if (race && handedOff && handedOff.roomId === this.options.roomId) {
       room = handedOff;
       manager.originalRoom = null;
@@ -445,7 +446,21 @@ export class OriginalScene extends Phaser.Scene {
         this.options.roomId!,
         { nickname: 'Challenger' },
       );
-    else
+    else if (this.options.roomId) {
+      try {
+        room = await manager.client.joinById<OriginalTowerState>(
+          this.options.roomId,
+          { nickname: 'Player' },
+        );
+      } catch (error) {
+        if (
+          (error as { code?: number })?.code !==
+          ErrorCode.MATCHMAKE_INVALID_ROOM_ID
+        )
+          throw error;
+      }
+    }
+    if (!room)
       room = await manager.client.joinOrCreate<OriginalTowerState>(
         'original_tower',
         { campaign: this.options.campaign, nickname: 'Player' },
@@ -1408,6 +1423,7 @@ export class OriginalScene extends Phaser.Scene {
         : undefined,
       saveError: this.saveError || this.audioError,
       players: this.room?.state.players.size ?? 1,
+      roomId: this.room?.roomId,
       raceStatus: this.room?.state.status,
       countdown: this.room?.state.countdown,
       ready: this.room

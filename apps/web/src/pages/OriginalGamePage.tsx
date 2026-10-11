@@ -77,6 +77,10 @@ export function OriginalGamePage({
     : 'original';
   const game = useRef<Phaser.Game | null>(null);
   const scene = useRef<OriginalScene | null>(null);
+  const retryRoom = useRef<{
+    id: string;
+    campaign: CampaignId;
+  } | null>(null);
   const mount = useRef<HTMLDivElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -116,7 +120,12 @@ export function OriginalGamePage({
       fresh: autoplay || fresh.current,
       muted,
       mode,
-      roomId,
+      roomId:
+        roomId ||
+        (mode === 'community' &&
+        retryRoom.current?.campaign === activeCampaign
+          ? retryRoom.current.id
+          : undefined),
       intro: params.get('new') === '1',
       autoplay,
       autoplaySpeed: speed.current,
@@ -400,6 +409,7 @@ export function OriginalGamePage({
           ref={frame}
           data-testid="game-state"
           data-status={ui.status}
+          data-room-id={ui.roomId}
           data-x={ui.x}
           data-y={ui.y}
           data-jumps={ui.jumps}
@@ -460,7 +470,12 @@ export function OriginalGamePage({
                 <p>{ui.error}</p>
                 <button
                   className="original-ui-button"
-                  onClick={() => setGeneration((value) => value + 1)}
+                  onClick={() => {
+                    retryRoom.current = ui.roomId
+                      ? { id: ui.roomId, campaign: activeCampaign }
+                      : null;
+                    setGeneration((value) => value + 1);
+                  }}
                 >
                   Thử lại
                 </button>

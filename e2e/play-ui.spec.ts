@@ -1,6 +1,29 @@
 import { test, expect } from '@playwright/test';
 import { pauseGame, openDeveloper } from './helpers/gameMenu';
 
+test('retry remains usable after the only player leaves a failed community', async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const asset = '**/original/screens/midground/2.png';
+  await page.route(asset, (route) => route.abort());
+  await page.goto('/community');
+  const game = page.getByTestId('game-state');
+  await expect(game).toHaveAttribute('data-status', 'ERROR', {
+    timeout: 30000,
+  });
+  await page.unroute(asset);
+  await page
+    .getByRole('button', { name: 'Thử lại', exact: true })
+    .click();
+  await expect(game).toHaveAttribute('data-status', 'PLAYING', {
+    timeout: 30000,
+  });
+  await expect(page.getByTestId('player-count')).toHaveText(
+    '● 1 người trong phòng',
+  );
+});
+
 test('a failed prefetch stays visible during room updates and retry restores playing', async ({
   page,
   browser,
@@ -15,6 +38,8 @@ test('a failed prefetch stays visible during room updates and retry restores pla
   });
   const error = page.locator('.game-status[role="alert"]');
   await expect(error).toContainText('screens/midground/2');
+  const roomId = await game.getAttribute('data-room-id');
+  expect(roomId).toBeTruthy();
   const peer = await browser.newContext();
   try {
     const other = await peer.newPage();
@@ -37,6 +62,7 @@ test('a failed prefetch stays visible during room updates and retry restores pla
       timeout: 30000,
     });
     await expect(error).toHaveCount(0);
+    await expect(game).toHaveAttribute('data-room-id', roomId!);
     await expect(other.getByTestId('player-count')).toHaveText(
       '● 2 người trong phòng',
     );
