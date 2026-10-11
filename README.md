@@ -48,6 +48,8 @@ Nếu bỏ `VITE_SERVER_URL`, bản deploy chỉ mở chơi đơn. Pages không 
 
 ## Điều khiển
 
+Menu mở đầu dùng nền đen, khung 4:3, logo, font Litter Lover, viền, con trỏ và nhạc từ bản gốc. Nhấn **Space/Enter** hoặc chạm **Press SPACE to start** để mở menu; dùng ↑/↓ và Space/Enter để chọn, Escape để quay lại. **Other Babes** mở New Babe+ và Ghost of the Babe; **Play Online** mở Community Tower hoặc Race Arena. **Continue** giữ save; chơi mới có xác nhận nếu chiến dịch đã có save. **Options** có âm thanh, toàn màn hình và hướng dẫn; **Extras** có credits và thống kê đã lưu. **Quit** trở lại màn tiêu đề; đóng tab để thoát trình duyệt.
+
 - Trái/phải hoặc A/D: đi bộ và chọn hướng nhảy.
 - Giữ Space, W hoặc mũi tên lên: tích lực; thả để nhảy; tự nhảy khi đầy lực sau 0,6 giây.
 - Không đổi hướng trên không; va tường làm bật lại.

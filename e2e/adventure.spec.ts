@@ -112,10 +112,11 @@ test('new games show a skippable intro and retain owned equipment across campaig
       }),
     ),
   );
-  await page
-    .getByRole('button', { name: 'New Babe Plus', exact: true })
-    .click();
-  await page.getByRole('button', { name: /Game mới/ }).click();
+  await page.getByRole('button', { name: 'Press SPACE to start' }).click();
+  await page.getByRole('button', { name: 'Other Babes', exact: true }).click();
+  await page.getByRole('button', { name: 'New Babe+', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Campaign menu' })
+    .getByRole('button', { name: 'New Game', exact: true }).click();
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'CUTSCENE',

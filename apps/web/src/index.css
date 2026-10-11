@@ -36,59 +36,177 @@ a:focus-visible {
   font-size: 10px;
   letter-spacing: 0.22em;
 }
+@font-face {
+  font-family: 'Jump King Menu';
+  src: url('/original/font/ttf_litter_lover2_bold.ttf') format('truetype');
+  font-display: swap;
+}
 .title-page {
   min-height: 100dvh;
   display: grid;
   place-items: center;
+  background: #000;
+}
+.title-viewport {
   position: relative;
+  width: min(100vw, 133.333dvh, 960px);
+  aspect-ratio: 4 / 3;
   overflow: hidden;
-  padding: 40px 20px;
+  background: #000;
 }
-.title-scene {
+.title-viewport:fullscreen {
+  width: 100vw;
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+}
+.title-stage {
+  width: 480px;
+  height: 360px;
   position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(#0e15119c, #0b100cf2),
-    url('/original/screens/midground/1.png') center/cover;
+  transform-origin: top left;
+  font-family: 'Jump King Menu', monospace;
+  font-size: 14px;
+  line-height: 17px;
+  color: #fff;
   image-rendering: pixelated;
-}
-.title-content {
-  position: relative;
-  width: min(100%, 600px);
-  text-align: center;
 }
 .title-logo {
+  position: absolute;
+  left: 44px;
+  top: 50px;
+  width: 392px;
+  height: 111px;
   image-rendering: pixelated;
-  width: min(100%, 480px);
-  height: auto;
-  margin: 28px auto 8px;
 }
-.title-subtitle {
-  color: #bfc3a8;
-  font-size: 12px;
-  margin-bottom: 36px;
+.press-start .title-logo {
+  animation: title-rise 2s linear;
 }
-.campaign-selector {
+@keyframes title-rise {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.press-start-button {
+  position: absolute;
+  top: 222px;
+  left: 120px;
+  width: 240px;
+  height: 24px;
+  font: inherit;
+  color: #fff;
+  background: transparent;
+  animation: title-blink 1s steps(1) infinite;
+}
+@keyframes title-blink {
+  50% { color: transparent; }
+}
+.press-start-button:hover,
+.press-start-button:focus-visible {
+  animation: none;
+}
+.title-king {
+  position: absolute;
+  left: 216px;
+  top: 280px;
+  width: 48px;
+  height: 48px;
+  background: url('/original/king/base.png') -368px -48px;
+}
+.original-frame {
+  border: 16px solid transparent;
+  border-image: url('/original/gui/frame.png') 16 fill / 16px;
+}
+.original-menu {
+  position: absolute;
+  top: 176px;
   display: flex;
-  justify-content: center;
-  gap: 5px;
-  margin-bottom: 25px;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 420px;
 }
-.campaign-selector button {
+.original-menu button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 17px;
+  white-space: nowrap;
+  font: inherit;
+  text-align: left;
+  color: #fff;
+  background: transparent;
+}
+.original-menu button:focus {
+  padding-left: 5px;
+  outline: none;
+}
+.original-menu button:focus::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  width: 16px;
+  height: 14px;
+  background: url('/original/gui/cursor.png');
+}
+.original-menu .babe-option {
+  color: #00ff00;
+}
+.original-menu.inactive button {
+  opacity: 1;
+  color: #808080;
+}
+.title-copyright {
+  position: absolute;
+  top: 32px;
+  left: 337px;
+  color: #808080;
+}
+.title-save {
+  position: absolute;
+  right: 16px;
+  top: 176px;
+  min-width: 142px;
+  color: #808080;
+}
+.title-save p {
+  margin: 0 0 4px;
+}
+.title-details {
   font-size: 11px;
-  padding: 9px 11px;
-  border-bottom: 1px solid #4e5945;
-  color: #949e8b;
+  line-height: 12px;
+  color: #a0a0a0;
+  margin-bottom: 4px;
 }
-.campaign-selector .selected {
-  color: #e4c47f;
-  border-color: #e4c47f;
+.title-details p {
+  margin: 0 0 2px;
 }
-.title-menu {
-  max-width: 330px;
-  margin: auto;
-  display: grid;
-  gap: 10px;
+.title-menu-note {
+  position: absolute;
+  top: 159px;
+  left: 16px;
+  margin: 0;
+  font-size: 12px;
+  color: #a0a0a0;
+}
+.title-save-note {
+  position: absolute;
+  right: 18px;
+  bottom: 8px;
+  margin: 0;
+  color: #808080;
+  font-size: 12px;
+}
+.title-notice {
+  position: absolute;
+  top: 8px;
+  left: 16px;
+  margin: 0;
+  font-size: 12px;
+  color: #dba0a0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .press-start .title-logo,
+  .press-start-button { animation: none; }
 }
 .menu-button {
   border: 1px solid #697051;
@@ -120,15 +238,6 @@ a:focus-visible {
   color: #acaa94;
   margin-top: 5px;
 }
-.online-options {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 11px;
-  margin: 20px 0 10px;
-  color: #929d87;
-}
-.online-options a:hover,
 .game-footer a:hover {
   color: #e4c47f;
 }
@@ -142,19 +251,6 @@ kbd {
   color: #cdd1bf;
   background: #20271d;
   border-radius: 2px;
-}
-.title-controls {
-  font-size: 11px;
-  color: #a7b09d;
-  margin: 35px 0 20px;
-}
-.title-controls span {
-  margin: 0 10px;
-}
-.title-footnote {
-  font-size: 9px;
-  color: #75816f;
-  line-height: 1.8;
 }
 .game-page {
   min-height: 100dvh;
@@ -502,16 +598,6 @@ progress::-moz-progress-bar {
   }
   .under-game {
     font-size: 8px;
-  }
-  .title-controls {
-    font-size: 10px;
-  }
-  .campaign-selector button {
-    padding: 9px 8px;
-    font-size: 9px;
-  }
-  .title-logo {
-    margin-top: 24px;
   }
 }
 

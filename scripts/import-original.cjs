@@ -137,6 +137,8 @@ function convert(directory) {
   }
 }
 convert(source);
+const menuFont = 'font/ttf_litter_lover2_bold.ttf';
+write(path.join(output, menuFont), fs.readFileSync(path.join(source, menuFont)));
 
 const level = unpack(path.join(source, 'level.xnb')).export;
 const tileColor = (screen, x, y) => {

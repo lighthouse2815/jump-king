@@ -18,7 +18,8 @@ test('plays without a game server, pauses, saves and continues after reload', as
   page.on('pageerror', (error) => errors.push(error.message));
   await page.route('**:2567/**', (route) => route.abort());
   await page.goto('/');
-  await page.getByRole('button', { name: /Game mới/ }).click();
+  await page.getByRole('button', { name: 'Press SPACE to start' }).click();
+  await page.getByRole('button', { name: 'New Game', exact: true }).click();
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'PLAYING',
@@ -56,7 +57,7 @@ test('plays without a game server, pauses, saves and continues after reload', as
   });
   await expect(state).toHaveAttribute('data-jumps', '1');
   await page.getByRole('link', { name: /JUMP KING/ }).click();
-  await expect(page.getByRole('button', { name: /Tiếp tục/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -158,7 +159,8 @@ test('automatically releases a full charge and handles repeated scene mounting',
     .toBe(1);
   await page.keyboard.up('Space');
   await page.getByRole('link', { name: /JUMP KING/ }).click();
-  await page.getByRole('button', { name: /Tiếp tục/ }).click();
+  await page.getByRole('button', { name: 'Press SPACE to start' }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'PLAYING'
