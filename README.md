@@ -28,7 +28,7 @@ Frontend: http://localhost:3000. Server: http://localhost:2567. Khi dùng fronte
 
 Chơi tại **https://jump-king-web.pages.dev/**.
 
-Bản Pages phục vụ chơi đơn và các asset gốc, lưu tiến trình trên trình duyệt của người chơi. Community/Race đã kết nối tới server EC2 ở Singapore qua Cloudflare Worker. Wrangler để triển khai yêu cầu Node.js 22 trở lên.
+Bản Pages phục vụ chơi đơn và các asset gốc, lưu tiến trình trên trình duyệt của người chơi. Community/Race kết nối WSS trực tiếp tới EC2 ở Singapore qua `jumpking-lighthouse2815.duckdns.org`. Wrangler để triển khai yêu cầu Node.js 22 trở lên.
 
 ```sh
 pnpm exec wrangler login
@@ -41,10 +41,10 @@ Chỉ tạo project một lần. Cấu hình `wrangler.jsonc` trỏ tới `apps/
 Triển khai lại bản có multiplayer đang hoạt động:
 
 ```sh
-VITE_SERVER_URL=wss://jump-king-server.alexnguyena47.workers.dev pnpm deploy:cloudflare
+pnpm deploy:cloudflare
 ```
 
-Nếu bỏ `VITE_SERVER_URL`, bản deploy chỉ mở chơi đơn. Pages không chạy tiến trình Node.js của Colyseus; backend dùng EC2 `t3.micro`, còn Worker chuyển tiếp matchmaking và WebSocket. Hướng dẫn SSH, cập nhật server và giới hạn Free plan nằm trong [deploy/README.md](deploy/README.md). Không đặt token Cloudflare vào source code; Wrangler sử dụng thông tin đăng nhập cục bộ hoặc biến môi trường của CI.
+Lệnh deploy mặc định dùng endpoint DuckDNS; có thể đặt `VITE_SERVER_URL` để đổi backend. Pages không chạy tiến trình Node.js của Colyseus; backend dùng EC2 `t3.micro`, Nginx phục vụ HTTPS/WSS với chứng chỉ Let's Encrypt. Hướng dẫn SSH, cập nhật server và giới hạn Free plan nằm trong [deploy/README.md](deploy/README.md). Không đặt token Cloudflare vào source code; Wrangler sử dụng thông tin đăng nhập cục bộ hoặc biến môi trường của CI.
 
 ## Điều khiển
 

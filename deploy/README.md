@@ -1,8 +1,21 @@
 # Server multiplayer đang triển khai
 
-Frontend: https://jump-king-web.pages.dev/. API/WebSocket: https://jump-king-server.alexnguyena47.workers.dev/health và `wss://jump-king-server.alexnguyena47.workers.dev`.
+Frontend: https://jump-king-web.pages.dev/. API/WebSocket trực tiếp: https://jumpking-lighthouse2815.duckdns.org/health và `wss://jumpking-lighthouse2815.duckdns.org`.
 
-EC2 chạy Colyseus bằng systemd; Nginx kiểm tra token của Worker rồi chuyển tiếp tới cổng 2567. Worker dùng hostname AWS cấp vì Cloudflare không hỗ trợ `fetch()` trực tiếp tới IP. Kết nối từ trình duyệt tới Cloudflare dùng HTTPS/WSS; kết nối từ Worker tới EC2 dùng HTTP và token riêng.
+EC2 chạy Colyseus bằng systemd. Nginx nhận HTTPS/WSS trực tiếp trên cổng 443 bằng chứng chỉ Let's Encrypt rồi chuyển tiếp nội bộ tới cổng 2567. Frontend vẫn nằm trên Pages. Endpoint Worker cũ được giữ để dự phòng; chỉ endpoint dự phòng này dùng origin token.
+
+## WSS trực tiếp qua DuckDNS
+
+Domain `jumpking-lighthouse2815.duckdns.org` trỏ về `47.129.183.31`. Security group cho phép TCP 443; TCP 2567 vẫn chỉ phục vụ nội bộ. `certbot.timer` tự gia hạn chứng chỉ bằng HTTP challenge; hook `renew-nginx.sh` kiểm tra rồi reload Nginx sau khi gia hạn.
+
+```sh
+scp -i ~/.ssh/id_ed25519 deploy/ec2/setup-direct.sh deploy/ec2/nginx-direct*.conf.template deploy/ec2/renew-nginx.sh ubuntu@47.129.183.31:jump-king-deploy/
+ssh -i ~/.ssh/id_ed25519 ubuntu@47.129.183.31 'cd ~/jump-king-deploy && bash setup-direct.sh jumpking-lighthouse2815.duckdns.org'
+curl --fail https://jumpking-lighthouse2815.duckdns.org/health
+pnpm deploy:cloudflare
+```
+
+Các lần cập nhật backend bằng `setup.sh` giữ vhost HTTPS riêng. Nếu EC2 đổi public IP sau stop/start, cập nhật IP của domain trong DuckDNS. Không lưu token DuckDNS hoặc khóa chứng chỉ trong repository. Ngày kiểm tra 11/10/2026, AWS vẫn là FREE/ACTIVE, còn 48,78 USD credit; tài nguyên và timer hạn Free plan giữ nguyên.
 
 ## Bản cập nhật 11/10/2026
 
@@ -43,7 +56,8 @@ Kho đồ chơi đơn và thành tích nằm trong localStorage; kho đồ onlin
 | IPv4           | `47.129.183.31`                                |
 | Security group | `sg-0b6bc648ab633e33b`                         |
 | SSH            | Chỉ IP triển khai `171.250.215.52/32`          |
-| HTTP           | Cổng 80, Nginx yêu cầu origin token            |
+| HTTPS/WSS      | Cổng 443, chứng chỉ Let's Encrypt             |
+| HTTP           | Cổng 80, ACME challenge và Worker dự phòng     |
 
 Cổng 2567 không mở ra Internet. Không có Elastic IP, load balancer, NAT Gateway hay database riêng. Public IP và hostname có thể đổi khi stop/start; khi đó cập nhật `GAME_ORIGIN` trong `cloudflare-server/wrangler.jsonc` rồi chạy `pnpm deploy:server`.
 
@@ -90,8 +104,8 @@ ssh -i ~/.ssh/id_ed25519 ubuntu@47.129.183.31 'cd ~/jump-king-deploy && bash set
 
 ```sh
 pnpm deploy:server
-VITE_SERVER_URL=wss://jump-king-server.alexnguyena47.workers.dev pnpm deploy:cloudflare
-curl --fail https://jump-king-server.alexnguyena47.workers.dev/health
+pnpm deploy:cloudflare
+curl --fail https://jumpking-lighthouse2815.duckdns.org/health
 ```
 
 Worker secret `ORIGIN_TOKEN` phải khớp `.origin-token` trên EC2. Khi xoay token, dùng `wrangler secret put` với stdin từ file riêng rồi chạy lại cấu hình Nginx; không đưa token vào dòng lệnh hoặc Git. Cấu hình Worker chỉ chứa `GAME_ORIGIN`, không chứa secret.

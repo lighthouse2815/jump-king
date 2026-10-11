@@ -6,7 +6,7 @@
     "import:original": "node scripts/import-original.cjs",
     "dev": "pnpm build && pnpm --parallel --filter web --filter game-server dev",
     "start": "pnpm --filter game-server start",
-    "build:cloudflare": "VITE_MULTIPLAYER_DISABLED=true pnpm build",
+    "build:cloudflare": "VITE_SERVER_URL=${VITE_SERVER_URL:-wss://jumpking-lighthouse2815.duckdns.org} VITE_MULTIPLAYER_DISABLED=true pnpm build",
     "deploy:cloudflare": "pnpm build:cloudflare && wrangler pages deploy --branch main",
     "deploy:server": "wrangler deploy --config deploy/cloudflare-server/wrangler.jsonc",
     "test:e2e": "playwright test",
