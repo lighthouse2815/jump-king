@@ -1,5 +1,10 @@
 import { Body } from './Body';
 import { PlayerInput } from './PlayerController';
+import {
+  OriginalAdventure,
+  OriginalAdventureData,
+  OriginalAdventureState,
+} from './OriginalAdventure';
 
 /** Values from the supplied Jump King 1.04 executable, in pixels per 60 Hz tick. */
 const gravity = Math.fround(153 / 595);
@@ -46,6 +51,7 @@ export interface OriginalState {
   jumps: number;
   falls: number;
   airChargeTicks?: number;
+  adventure?: OriginalAdventureState;
 }
 
 interface Contact {
@@ -85,16 +91,19 @@ export class OriginalSimulation {
   jumps = 0;
   falls = 0;
   private airChargeTicks = 0;
+  readonly adventure?: OriginalAdventure;
 
   constructor(
     readonly screens: OriginalScreen[],
     x = 231,
-    y = 302
+    y = 302,
+    adventureData?: OriginalAdventureData,
   ) {
     this.body = new Body(x, y, ORIGINAL_PHYSICS.width, ORIGINAL_PHYSICS.height);
     this.body.velocity.y = 1;
     this.body.isGrounded = true;
     this.screen = this.screenAt(y + ORIGINAL_PHYSICS.height / 2);
+    if (adventureData) this.adventure = new OriginalAdventure(adventureData);
   }
 
   private screenAt(y: number) {
@@ -212,7 +221,7 @@ export class OriginalSimulation {
       return;
     }
     body.position.x = f(
-      body.position.x + vx * water * (this.onSand ? 0.25 : 1)
+      body.position.x + vx * water * (this.onSand ? 0.25 : 1),
     );
     const teleport = this.screens[this.screen].teleport;
     if (
@@ -247,7 +256,9 @@ export class OriginalSimulation {
     const signY = body.velocity.y > 0 ? 1 : -1;
     body.position.y = f(
       body.position.y +
-        body.velocity.y * water * (this.onSand && body.velocity.y < 0 ? 0.5 : 1)
+        body.velocity.y *
+          water *
+          (this.onSand && body.velocity.y < 0 ? 0.5 : 1),
     );
     if (!this.onSand && wasGrounded && body.velocity.y > 0) body.position.y++;
     info = this.contact();
@@ -268,7 +279,7 @@ export class OriginalSimulation {
           this.knocked = this.projectSlope(
             info.slope,
             body.velocity.x,
-            body.velocity.y
+            body.velocity.y,
           );
         else {
           this.knocked = false;
@@ -299,16 +310,20 @@ export class OriginalSimulation {
     }
     body.velocity.y = Math.min(
       f(body.velocity.y + gravity * water),
-      ORIGINAL_PHYSICS.maxFall
+      ORIGINAL_PHYSICS.maxFall,
     );
     this.onSand = info.sand;
     if (this.onSand) {
       body.velocity.y = Math.min(0.75, body.velocity.y);
       this.knocked = false;
     }
+    if (this.adventure?.equipped.includes('SnakeRing')) {
+      this.onSnow = false;
+      this.onIce = body.isGrounded;
+    }
     if (this.onIce)
       body.velocity.x = f(
-        towards(body.velocity.x, 0, ORIGINAL_PHYSICS.iceFriction)
+        towards(body.velocity.x, 0, ORIGINAL_PHYSICS.iceFriction),
       );
     return bumped;
   }
@@ -340,7 +355,7 @@ export class OriginalSimulation {
         if (this.chargeTicks >= ORIGINAL_PHYSICS.chargeTicks || !input.jump) {
           let intensity = Math.min(
             1,
-            this.chargeTicks / ORIGINAL_PHYSICS.chargeTicks
+            this.chargeTicks / ORIGINAL_PHYSICS.chargeTicks,
           );
           const jumpDirection =
             intent || this.directions.find((value) => value !== 0) || 0;
@@ -351,8 +366,8 @@ export class OriginalSimulation {
               clamp(
                 body.velocity.x + jumpDirection * ORIGINAL_PHYSICS.jumpSpeed,
                 -3.5,
-                3.5
-              )
+                3.5,
+              ),
             );
             if (jumpDirection) this.direction = jumpDirection;
             this.jumps++;
@@ -362,16 +377,19 @@ export class OriginalSimulation {
           this.jumpConsumed = true;
         }
       } else {
+        const walkIntent = this.adventure?.equipped.includes('GiantBoots')
+          ? 0
+          : intent;
         if (this.onSnow) body.velocity.x = 0;
         else if (this.onIce) {
-          const target = intent * ORIGINAL_PHYSICS.walkSpeed;
+          const target = walkIntent * ORIGINAL_PHYSICS.walkSpeed;
           if (
-            intent &&
+            walkIntent &&
             (Math.sign(target) !== Math.sign(body.velocity.x) ||
               Math.abs(target) > Math.abs(body.velocity.x))
           )
             body.velocity.x = f(towards(body.velocity.x, target, 0.2));
-        } else body.velocity.x = intent * ORIGINAL_PHYSICS.walkSpeed;
+        } else body.velocity.x = walkIntent * ORIGINAL_PHYSICS.walkSpeed;
         if (intent) this.direction = intent;
       }
     } else {
@@ -390,7 +408,8 @@ export class OriginalSimulation {
         this.windEnabled = true;
       this.screen = nextScreen;
     }
-    return { bumped: !!bumped };
+    const adventure = this.adventure?.tick(this.getState()) || [];
+    return { bumped: !!bumped, adventure };
   }
 
   getState(): OriginalState {
@@ -417,6 +436,7 @@ export class OriginalSimulation {
       jumps: this.jumps,
       falls: this.falls,
       airChargeTicks: this.airChargeTicks,
+      ...(this.adventure ? { adventure: this.adventure.getState() } : {}),
     };
   }
 
@@ -441,5 +461,7 @@ export class OriginalSimulation {
     this.jumps = state.jumps;
     this.falls = state.falls;
     this.airChargeTicks = state.airChargeTicks || 0;
+    if (state.adventure && this.adventure)
+      this.adventure.restore(state.adventure);
   }
 }
