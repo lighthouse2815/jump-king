@@ -7,6 +7,7 @@ export class OriginalPlayerState extends Schema {
   @type('boolean') ready = false;
   @type('boolean') finished = false;
   @type('number') finishTime = 0;
+  @type('string') finishEquipment = '[]';
 }
 
 export class OriginalTowerState extends Schema {

@@ -1,6 +1,7 @@
 import { Room, Client } from '@colyseus/core';
 import {
   ORIGINAL_SCREENS,
+  ORIGINAL_ADVENTURE,
   CAMPAIGNS,
   CampaignId,
   isOriginalFinish,
@@ -95,6 +96,16 @@ export class OriginalRoom extends Room<OriginalTowerState> {
         }, 1000);
       }
     });
+    this.onMessage('equip', (client, value: unknown) => {
+      if (!value || typeof value !== 'object') return;
+      const { item, enabled } = value as { item?: unknown; enabled?: unknown };
+      if (typeof item !== 'string' || typeof enabled !== 'boolean') return;
+      const simulation = this.simulations.get(client.sessionId);
+      const player = this.state.players.get(client.sessionId);
+      if (!simulation || !player || player.finished) return;
+      if (simulation.adventure?.setEquipped(item, enabled))
+        player.snapshot = JSON.stringify(simulation.getState());
+    });
     this.setSimulationInterval(() => this.update(), 1000 / 60);
   }
 
@@ -103,8 +114,11 @@ export class OriginalRoom extends Room<OriginalTowerState> {
     const simulation = new OriginalSimulation(
       ORIGINAL_SCREENS,
       campaign.spawnX,
-      campaign.spawnY - campaign.startScreen * 360
+      campaign.spawnY - campaign.startScreen * 360,
+      ORIGINAL_ADVENTURE,
     );
+    if (this.campaign === 'nbp') simulation.adventure?.flag('StartedNBP');
+    if (this.campaign === 'ghost') simulation.adventure?.flag('StartedGhost');
     const player = new OriginalPlayerState();
     player.nickname =
       typeof options.nickname === 'string'
@@ -140,10 +154,15 @@ export class OriginalRoom extends Room<OriginalTowerState> {
           simulation.body.position.x,
           simulation.body.position.y,
           simulation.body.isGrounded,
-          simulation.screen
+          simulation.screen,
         )
       ) {
         player.finished = true;
+        player.finishEquipment = JSON.stringify(
+          simulation.adventure?.equipped || [],
+        );
+        simulation.adventure?.complete(this.campaign);
+        player.snapshot = JSON.stringify(simulation.getState());
         player.finishTime = this.race
           ? Date.now() - this.state.startTime
           : (simulation.elapsedTicks / 60) * 1000;

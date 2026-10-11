@@ -12,10 +12,12 @@ it('encodes the authoritative snapshot and propagates later changes', () => {
   server.discardAllChanges();
   expect(client.players.get('session')?.snapshot).toBe('{"x":231}');
   player.snapshot = '{"x":234.5}'; player.lastProcessedInputSeq = 1; player.ready = true;
+  player.finishEquipment = '["Shoes"]';
   client.decode(server.encode());
   expect(client.players.get('session')?.snapshot).toBe('{"x":234.5}');
   expect(client.players.get('session')?.lastProcessedInputSeq).toBe(1);
   expect(client.players.get('session')?.ready).toBe(true);
+  expect(JSON.parse(client.players.get('session')!.finishEquipment)).toEqual(['Shoes']);
 });
 
 it('preserves encoding of the existing multiplayer protocol', () => {
