@@ -521,5 +521,9 @@ progress::-moz-progress-bar {
 .inventory-panel li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; font-size: 12px; }
 .inventory-panel button { padding: 4px 8px; border: 1px solid #727b59; border-radius: 3px; background: #20291f; color: #e8d5a0; cursor: pointer; }
 .inventory-panel button:disabled { opacity: .5; cursor: default; }
+.autoplay-panel label { display: block; margin: 12px 0 6px; font-size: 12px; }
+.autoplay-panel input, .autoplay-panel select { width: 100%; padding: 8px; border: 1px solid #727b59; border-radius: 3px; background: #151e13; color: #e8d5a0; }
+.autoplay-panel .menu-button { width: 100%; margin-top: 10px; }
+.autoplay-panel li { display: block; line-height: 1.6; }
 .cutscene-skip { position: absolute; z-index: 5; bottom: 12px; right: 12px; width: auto; padding: 8px 12px; font-size: 12px; }
 .achievement-toast { position: absolute; z-index: 6; top: 10px; left: 10px; right: 10px; padding: 10px; background: #182417ed; border: 1px solid #909b5c; color: #e8d5a0; font-size: 12px; pointer-events: none; }

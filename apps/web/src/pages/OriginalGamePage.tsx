@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Phaser from 'phaser';
 import { CAMPAIGNS, CampaignId } from '@jump-king/maps';
-import { OriginalScene, OriginalUi } from '../game/scenes/OriginalScene';
+import {
+  OriginalScene,
+  OriginalUi,
+  AutoplayResult,
+} from '../game/scenes/OriginalScene';
+
+const autoplayCampaigns: CampaignId[] = ['original', 'nbp', 'ghost'];
 
 const initialUi: OriginalUi = {
   status: 'LOADING',
@@ -54,18 +60,37 @@ export function OriginalGamePage({
     () => localStorage.getItem('jumpking.muted') === 'true',
   );
   const [notice, setNotice] = useState('');
+  const [cheat, setCheat] = useState('');
+  const [cheatError, setCheatError] = useState('');
+  const [autoplayIndex, setAutoplayIndex] = useState<number | null>(null);
+  const [autoplaySpeed, setAutoplaySpeed] = useState(8);
+  const speed = useRef(autoplaySpeed);
+  const [results, setResults] = useState<AutoplayResult[]>([]);
+  const autoplay = mode === 'solo' && autoplayIndex !== null;
+  const activeCampaign = autoplay
+    ? autoplayCampaigns[autoplayIndex ?? 0]
+    : campaign;
 
   useEffect(() => {
     if (!mount.current) return;
     let active = true;
     setUi(initialUi);
     const instance = new OriginalScene({
-      campaign,
-      fresh: fresh.current,
+      campaign: activeCampaign,
+      fresh: autoplay || fresh.current,
       muted,
       mode,
       roomId,
       intro: params.get('new') === '1',
+      autoplay,
+      autoplaySpeed: speed.current,
+      onAutoplayComplete: (result) => {
+        if (active)
+          setResults((previous) => [
+            ...previous.filter((entry) => entry.campaign !== result.campaign),
+            result,
+          ]);
+      },
       onUi: (state) => {
         if (active) setUi(state);
       },
@@ -94,7 +119,43 @@ export function OriginalGamePage({
     };
     // Sound preferences are applied independently without restarting a run.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaign, generation, mode, roomId]);
+  }, [activeCampaign, autoplay, generation, mode, roomId]);
+
+  useEffect(() => {
+    speed.current = autoplaySpeed;
+    scene.current?.setAutoplaySpeed(autoplaySpeed);
+  }, [autoplaySpeed]);
+
+  useEffect(() => {
+    if (
+      !autoplay ||
+      ui.status !== 'COMPLETE' ||
+      autoplayIndex === autoplayCampaigns.length - 1
+    )
+      return;
+    const timer = window.setTimeout(
+      () => setAutoplayIndex((index) => (index === null ? null : index + 1)),
+      2500,
+    );
+    return () => window.clearTimeout(timer);
+  }, [autoplay, autoplayIndex, ui.status]);
+
+  const activateCheat = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (cheat.trim().toUpperCase() !== 'AUTOKING') {
+      setCheatError('Mã cheat không đúng.');
+      return;
+    }
+    scene.current?.persist();
+    fresh.current = false;
+    setCheatError('');
+    setResults([]);
+    setAutoplayIndex(0);
+  };
+  const stopAutoplay = () => {
+    fresh.current = false;
+    setAutoplayIndex(null);
+  };
 
   useEffect(() => {
     scene.current?.setMuted(muted);
@@ -140,7 +201,7 @@ export function OriginalGamePage({
             ? `Community Tower · ${ui.players} người chơi`
             : mode === 'race'
               ? `Race Arena · ${roomId}`
-              : CAMPAIGNS[campaign].name}
+              : `${CAMPAIGNS[activeCampaign].name}${autoplay ? ' · Tự chơi' : ''}`}
         </span>
         <div className="game-actions">
           <button
@@ -176,6 +237,8 @@ export function OriginalGamePage({
             data-y={ui.y}
             data-jumps={ui.jumps}
             data-charge={ui.charge}
+            data-autoplay={autoplay}
+            data-replay-progress={ui.autoplay?.progress}
           >
             <div ref={mount} className="phaser-mount" />
             {ui.status === 'CUTSCENE' && (
@@ -214,9 +277,11 @@ export function OriginalGamePage({
             {ui.paused && (
               <div className="game-overlay pause-overlay">
                 <span className="eyebrow">
-                  {mode === 'solo'
-                    ? 'TIẾN TRÌNH ĐÃ LƯU'
-                    : 'PHÒNG CHƠI VẪN TIẾP TỤC'}
+                  {autoplay
+                    ? 'PHIÊN CHẠY THỬ'
+                    : mode === 'solo'
+                      ? 'TIẾN TRÌNH ĐÃ LƯU'
+                      : 'PHÒNG CHƠI VẪN TIẾP TỤC'}
                 </span>
                 <h2>Tạm dừng</h2>
                 <button
@@ -225,7 +290,7 @@ export function OriginalGamePage({
                 >
                   Tiếp tục
                 </button>
-                {mode === 'solo' && (
+                {mode === 'solo' && !autoplay && (
                   <button className="menu-button" onClick={restart}>
                     Chơi lại từ đầu
                   </button>
@@ -245,15 +310,32 @@ export function OriginalGamePage({
                 <Link className="menu-button primary" to="/">
                   Về menu
                 </Link>
-                <button className="menu-button" onClick={restart}>
-                  Chơi lại
-                </button>
+                {!autoplay && (
+                  <button className="menu-button" onClick={restart}>
+                    Chơi lại
+                  </button>
+                )}
+                {autoplay && (
+                  <p>
+                    {autoplayIndex === 2
+                      ? 'Đã chạy xong cả 3 chiến dịch.'
+                      : 'Đang chuyển sang chiến dịch tiếp theo…'}
+                  </p>
+                )}
               </div>
             )}
           </div>
           <div className="under-game">
-            <span>Giữ để tích lực. Thả để nhảy.</span>
-            <span>Tự nhảy khi đầy lực.</span>
+            <span>
+              {autoplay
+                ? 'Đang tham quan bằng cheat.'
+                : 'Giữ để tích lực. Thả để nhảy.'}
+            </span>
+            <span>
+              {autoplay
+                ? 'Save của bạn được giữ nguyên.'
+                : 'Tự nhảy khi đầy lực.'}
+            </span>
           </div>
           <div className="touch-controls" aria-label="Điều khiển cảm ứng">
             <div>
@@ -319,10 +401,101 @@ export function OriginalGamePage({
             nơi bắt đầu.
           </p>
           <p className="save-note" data-testid="player-count">
-            {mode === 'solo'
-              ? '● Tự động lưu trong trình duyệt'
-              : `● ${ui.players} người trong phòng`}
+            {autoplay
+              ? '● Phiên chạy thử riêng, không lưu thành tích'
+              : mode === 'solo'
+                ? '● Tự động lưu trong trình duyệt'
+                : `● ${ui.players} người trong phòng`}
           </p>
+          {mode === 'solo' && (
+            <details
+              className="inventory-panel autoplay-panel"
+              open={autoplay || undefined}
+            >
+              <summary>Chạy thử tự động</summary>
+              {!autoplay ? (
+                <form onSubmit={activateCheat}>
+                  <p className="quiet-text">
+                    Nhập mã để tự tham quan mọi màn, thử vật phẩm/NPC và cắt
+                    cảnh của cả 3 chiến dịch.
+                  </p>
+                  <label htmlFor="cheat-code">Mã cheat</label>
+                  <input
+                    id="cheat-code"
+                    value={cheat}
+                    onChange={(event) => setCheat(event.target.value)}
+                    onFocus={() => scene.current?.setPaused(true)}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    className="menu-button"
+                    type="submit"
+                    disabled={ui.status === 'LOADING'}
+                  >
+                    Kích hoạt tự chơi
+                  </button>
+                  {cheatError && (
+                    <p role="alert" className="error-note">
+                      {cheatError}
+                    </p>
+                  )}
+                </form>
+              ) : (
+                <div data-testid="autoplay-panel">
+                  <p>
+                    Chiến dịch {(autoplayIndex ?? 0) + 1}/3 ·{' '}
+                    {CAMPAIGNS[activeCampaign].name}
+                  </p>
+                  <p className="quiet-text">{ui.autoplay?.label}</p>
+                  <progress
+                    value={ui.autoplay?.progress || 0}
+                    max="1"
+                    aria-label="Tiến độ tự chơi"
+                  />
+                  <p className="quiet-text">
+                    {Math.floor((ui.autoplay?.progress || 0) * 100)}% · Đã qua{' '}
+                    {ui.autoplay?.visited || 0}/{ui.autoplay?.totalScreens || 0}{' '}
+                    màn
+                  </p>
+                  <button className="menu-button" onClick={stopAutoplay}>
+                    Dừng tự chơi, trở lại save
+                  </button>
+                </div>
+              )}
+              <label htmlFor="autoplay-speed">Tốc độ chạy thử</label>
+              <select
+                id="autoplay-speed"
+                value={autoplaySpeed}
+                onChange={(event) =>
+                  setAutoplaySpeed(Number(event.target.value))
+                }
+              >
+                {[1, 4, 8, 16, 32, 64].map((value) => (
+                  <option key={value} value={value}>
+                    {value}×
+                  </option>
+                ))}
+              </select>
+              {!!results.length && (
+                <ul data-testid="autoplay-results">
+                  {results.map((result) => (
+                    <li key={result.campaign} data-campaign={result.campaign}>
+                      {CAMPAIGNS[result.campaign].name}: hoàn tất ·{' '}
+                      {result.screens.length} màn · {result.pickups} lần nhặt ·{' '}
+                      {result.npcs} NPC · {result.sales} giao dịch ·{' '}
+                      {result.birds} nhiệm vụ chim · {result.endings} cắt cảnh
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="quiet-text">
+                Phiên cheat riêng: tự chuyển màn và tới vùng kích hoạt; cấp tiền
+                thử mua đồ. Báo cáo ghi tương tác đã chạy. Các nhánh hội thoại
+                và thử thách thành tích cần kiểm tra riêng.
+              </p>
+            </details>
+          )}
           <details className="inventory-panel" open>
             <summary>Vật phẩm · {ui.inventory?.length || 0}</summary>
             {!ui.inventory?.length && (
@@ -342,7 +515,7 @@ export function OriginalGamePage({
                       <button
                         aria-label={`${equipped ? 'Tháo' : 'Mặc'} ${label}`}
                         aria-pressed={equipped}
-                        disabled={ui.status !== 'PLAYING'}
+                        disabled={autoplay || ui.status !== 'PLAYING'}
                         onClick={() =>
                           scene.current?.setEquipped(item, !equipped)
                         }
@@ -357,7 +530,11 @@ export function OriginalGamePage({
           </details>
           <details className="inventory-panel" open>
             <summary>Thành tích · {ui.achievements?.length || 0}/48</summary>
-            <p className="quiet-text">Lưu trong trình duyệt.</p>
+            <p className="quiet-text">
+              {autoplay
+                ? 'Thành tích của phiên chạy thử.'
+                : 'Lưu trong trình duyệt.'}
+            </p>
             <ul>
               {ui.achievements?.map((achievement) => (
                 <li key={achievement.id} title={achievement.description}>

@@ -8,6 +8,7 @@ import {
 } from '@jump-king/maps';
 import {
   OriginalSimulation,
+  OriginalAutoplayTour,
   ORIGINAL_PHYSICS,
   OriginalState,
   PlayerInput,
@@ -30,6 +31,7 @@ import {
 import { readSave, saveKey } from '../soloSave';
 import {
   readProgress,
+  createProgress,
   profileAdventure,
   progressKey,
   itemLabels,
@@ -65,6 +67,12 @@ export interface OriginalUi {
   y: number;
   paused: boolean;
   progress: number;
+  autoplay?: {
+    progress: number;
+    visited: number;
+    totalScreens: number;
+    label: string;
+  };
   error?: string;
   saveError?: string;
   players: number;
@@ -72,6 +80,19 @@ export interface OriginalUi {
   countdown?: number;
   ready?: boolean;
   standings?: { nickname: string; finished: boolean; seconds: number }[];
+}
+export interface AutoplayResult {
+  campaign: CampaignId;
+  screens: number[];
+  jumps: number;
+  falls: number;
+  seconds: number;
+  items: string[];
+  pickups: number;
+  npcs: number;
+  sales: number;
+  birds: number;
+  endings: number;
 }
 export interface OriginalSceneOptions {
   campaign: CampaignId;
@@ -81,6 +102,9 @@ export interface OriginalSceneOptions {
   mode?: 'solo' | 'community' | 'race';
   roomId?: string;
   intro?: boolean;
+  autoplay?: boolean;
+  autoplaySpeed?: number;
+  onAutoplayComplete?: (result: AutoplayResult) => void;
 }
 
 const frameNames = [
@@ -129,6 +153,10 @@ export class OriginalScene extends Phaser.Scene {
   private progress = 0;
   private room: Room<OriginalTowerState> | null = null;
   private profile = readProgress();
+  private tour?: OriginalAutoplayTour;
+  private alternateTourEnding = false;
+  private tourEndingTimer?: number;
+  private autoplaySpeed = 1;
   private runId: string = crypto.randomUUID();
   private achievementNotice = '';
   private achievementNoticeAt = 0;
@@ -162,6 +190,28 @@ export class OriginalScene extends Phaser.Scene {
 
   constructor(private options: OriginalSceneOptions) {
     super({ key: 'OriginalScene' });
+    if (options.autoplay) {
+      if (options.mode && options.mode !== 'solo')
+        throw new Error('Autoplay is solo only');
+      this.profile = createProgress();
+      const c = CAMPAIGNS[options.campaign];
+      const [first, last] =
+        options.campaign === 'original'
+          ? [0, 45]
+          : options.campaign === 'nbp'
+            ? [46, 100]
+            : [101, 168];
+      const screens = Array.from(
+        { length: last - first + 1 },
+        (_, index) => first + index,
+      );
+      this.tour = new OriginalAutoplayTour(ORIGINAL_ADVENTURE, screens, {
+        screen: c.endScreen,
+        x: c.finishX + (options.campaign === 'nbp' ? -27 : 9),
+        y: c.finishY - 26,
+      });
+      this.autoplaySpeed = options.autoplaySpeed || 8;
+    }
   }
 
   preload() {
@@ -201,12 +251,14 @@ export class OriginalScene extends Phaser.Scene {
       campaign.spawnX,
       campaign.spawnY - campaign.startScreen * 360,
       ORIGINAL_ADVENTURE,
-      !this.options.mode || this.options.mode === 'solo'
+      !this.options.autoplay &&
+        (!this.options.mode || this.options.mode === 'solo')
         ? profileAdventure(this.profile)
         : undefined,
     );
     const save =
       this.options.fresh ||
+      this.options.autoplay ||
       this.options.mode === 'community' ||
       this.options.mode === 'race'
         ? null
@@ -329,6 +381,7 @@ export class OriginalScene extends Phaser.Scene {
       window.addEventListener('blur', this.blur);
       document.addEventListener('visibilitychange', this.visibility);
       this.ready = true;
+      this.setAutoplaySpeed(this.autoplaySpeed);
       this.renderScreen(this.simulation.screen);
       this.renderPlayer();
       this.recordAchievements(this.completed);
@@ -367,6 +420,7 @@ export class OriginalScene extends Phaser.Scene {
     if (this.disposed) return;
     this.persist();
     this.disposed = true;
+    window.clearTimeout(this.tourEndingTimer);
     window.removeEventListener('pagehide', this.persist);
     window.removeEventListener('blur', this.blur);
     document.removeEventListener('visibilitychange', this.visibility);
@@ -841,7 +895,7 @@ export class OriginalScene extends Phaser.Scene {
     }
     this.gamepadPause = padPause;
     if (this.paused || this.changingScreen) return;
-    this.accumulator += Math.min(delta, 100) / 1000;
+    this.accumulator += (Math.min(delta, 100) / 1000) * this.autoplaySpeed;
     while (this.accumulator >= 1 / 60) {
       this.accumulator -= 1 / 60;
       const sim = this.simulation;
@@ -868,9 +922,16 @@ export class OriginalScene extends Phaser.Scene {
           this.touch.jump ||
           !!pad?.buttons[0]?.pressed,
       };
-      const input = this.canMove
-        ? rawInput
-        : { left: false, right: false, jump: false };
+      let tourInput: PlayerInput | undefined;
+      try {
+        tourInput = this.tour?.prepare(sim);
+      } catch (error) {
+        this.fail(error instanceof Error ? error.message : String(error));
+        return;
+      }
+      const input =
+        tourInput ||
+        (this.canMove ? rawInput : { left: false, right: false, jump: false });
       if (this.room) {
         const sequenced = { ...input, seq: this.sequence++ };
         this.pending.push(sequenced);
@@ -881,6 +942,12 @@ export class OriginalScene extends Phaser.Scene {
         }
       }
       const event = sim.tick(input);
+      try {
+        this.tour?.afterTick(sim);
+      } catch (error) {
+        this.fail(error instanceof Error ? error.message : String(error));
+        return;
+      }
       for (const adventureEvent of event.adventure) {
         if (adventureEvent.sound) this.playSound(adventureEvent.sound);
         else if (
@@ -903,6 +970,7 @@ export class OriginalScene extends Phaser.Scene {
       this.best = Math.max(this.best, sim.screen);
       if (
         !this.room &&
+        (!this.tour || this.tour.finishing) &&
         isOriginalFinish(
           this.options.campaign,
           sim.body.position.x,
@@ -936,7 +1004,7 @@ export class OriginalScene extends Phaser.Scene {
     }
     for (const layer of this.scrolling)
       layer.sprite.tilePositionX += (layer.speed * delta) / 1000;
-    this.updateDetails(delta);
+    this.updateDetails(delta * this.autoplaySpeed);
     this.renderPlayer();
     if (this.time.now - this.uiAt >= 100) {
       this.emitUi();
@@ -1069,9 +1137,11 @@ export class OriginalScene extends Phaser.Scene {
       if (this.disposed) return;
       this.cutscenes?.destroy();
       this.cutscenes = new OriginalCutscenes(this, this.options.campaign, {
-        equipped: equipped || this.simulation.adventure!.equipped,
+        equipped:
+          equipped || (this.tour ? [] : this.simulation.adventure!.equipped),
         ravenDone: this.simulation.adventure!.getState().birds.raven?.done,
         tsuchinokoDone:
+          (!this.tour || this.alternateTourEnding) &&
           this.simulation.adventure!.getState().birds.tsuchinoko?.done,
         player: this.player,
         hide: [
@@ -1092,7 +1162,45 @@ export class OriginalScene extends Phaser.Scene {
           this.activeCutscene = undefined;
           this.ready = true;
           this.persist();
+          if (this.tour && !this.alternateTourEnding) {
+            this.activeCutscene = 'ending';
+            this.ready = false;
+            this.tourEndingTimer = window.setTimeout(() => {
+              if (this.disposed) return;
+              this.alternateTourEnding = true;
+              void this.showEnding(
+                false,
+                this.options.campaign === 'original'
+                  ? ['Shoes']
+                  : this.options.campaign === 'nbp'
+                    ? ['GiantBoots']
+                    : [],
+              );
+            }, 2000);
+            this.emitUi();
+            return;
+          }
           this.emitUi();
+          const adventure = this.simulation.adventure!.getState();
+          if (this.tour)
+            this.options.onAutoplayComplete?.({
+              campaign: this.options.campaign,
+              screens: this.tour.screens.filter((screen) =>
+                this.tour!.visited.has(screen),
+              ),
+              jumps: this.simulation.jumps,
+              falls: this.simulation.falls,
+              seconds: this.simulation.elapsedTicks / 60,
+              items: Object.keys(this.simulation.adventure!.inventory),
+              pickups: adventure.collected.length,
+              npcs: this.tour.npcs.length,
+              sales: Object.values(adventure.merchants).filter(
+                (merchant) => merchant.sold,
+              ).length,
+              birds: Object.values(adventure.birds).filter((bird) => bird.done)
+                .length,
+              endings: 2,
+            });
         },
       });
       if (resume) this.cutscenes.showEndingPicture();
@@ -1105,8 +1213,15 @@ export class OriginalScene extends Phaser.Scene {
   skipCutscene() {
     this.cutscenes?.skip();
   }
+  setAutoplaySpeed(speed: number) {
+    if (!this.tour || ![1, 4, 8, 16, 32, 64].includes(speed)) return;
+    this.autoplaySpeed = speed;
+    this.time.timeScale = speed;
+    this.tweens.timeScale = speed;
+    this.anims.globalTimeScale = speed;
+  }
   setEquipped(item: string, enabled: boolean) {
-    if (this.activeCutscene || this.completed) return;
+    if (this.tour || this.activeCutscene || this.completed) return;
     if (this.room) {
       this.room.send('equip', { item, enabled });
       return;
@@ -1189,6 +1304,7 @@ export class OriginalScene extends Phaser.Scene {
   persist = () => {
     if (
       !this.simulation ||
+      this.options.autoplay ||
       this.options.mode === 'community' ||
       this.options.mode === 'race'
     )
@@ -1268,6 +1384,16 @@ export class OriginalScene extends Phaser.Scene {
       y: sim?.body.position.y ?? 302,
       paused: this.paused,
       progress: this.progress,
+      autoplay: this.tour
+        ? {
+            progress: this.tour.finishing ? 1 : this.tour.progress,
+            visited: this.tour.screens.filter((screen) =>
+              this.tour!.visited.has(screen),
+            ).length,
+            totalScreens: this.tour.screens.length,
+            label: this.tour.label,
+          }
+        : undefined,
       saveError: this.saveError || this.audioError,
       players: this.room?.state.players.size ?? 1,
       raceStatus: this.room?.state.status,

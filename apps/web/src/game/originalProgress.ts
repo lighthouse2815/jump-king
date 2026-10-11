@@ -13,14 +13,17 @@ export interface OriginalProgress {
   flags: string[];
   achievements: OriginalAchievementProgress;
 }
-export function readProgress(): OriginalProgress {
-  const empty: OriginalProgress = {
+export function createProgress(): OriginalProgress {
+  return {
     version: 1,
     inventory: {},
     equipped: [],
     flags: [],
     achievements: createOriginalAchievementProgress(),
   };
+}
+export function readProgress(): OriginalProgress {
+  const empty = createProgress();
   try {
     const value = JSON.parse(localStorage.getItem(progressKey) || 'null');
     if (value?.version !== 1) return empty;

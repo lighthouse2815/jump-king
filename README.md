@@ -57,6 +57,12 @@ Nếu bỏ `VITE_SERVER_URL`, bản deploy chỉ mở chơi đơn. Pages không 
 
 ## Kiểm tra
 
+### Tự tham quan bằng mã cheat
+
+Trong **Chơi đơn**, mở **Chạy thử tự động**, nhập **`AUTOKING`** và bấm **Kích hoạt tự chơi**. Game tự tham quan đủ 169 màn của ba chiến dịch, tiếp cận vật phẩm/NPC, cấp tiền để thử cả 5 thương nhân, chạy 4 nhiệm vụ chim, mở đầu và cả 6 biến thể kết thúc. Chọn tốc độ 1×–64×; có tạm dừng/tiếp tục và **Dừng tự chơi, trở lại save**.
+
+Đây là phiên cheat riêng dùng dịch chuyển tới vùng kích hoạt và logic tương tác thực tế. Save, kho đồ và thành tích của người chơi được giữ nguyên. Báo cáo mỗi chiến dịch ghi số màn, lần nhặt vật phẩm, NPC, giao dịch, nhiệm vụ chim và cắt cảnh đã chạy; bước không tương tác thành công sẽ báo lỗi. Các nhánh hội thoại theo điều kiện, biến thể giá mua và thử thách thành tích vẫn cần kiểm tra riêng. Chế độ này chỉ có trong chơi đơn.
+
 ```sh
 pnpm test
 pnpm test:e2e
