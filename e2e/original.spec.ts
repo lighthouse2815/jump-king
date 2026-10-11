@@ -135,6 +135,12 @@ test('landing at the original finish saves completion and shows the ending', asy
           .completed
     )
   ).toBe(true);
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('jumpking.original.v1.original')!)
+        .state.adventure.inventory.Crown
+    )
+  ).toBe(1);
   expect(errors).toEqual([]);
 });
 

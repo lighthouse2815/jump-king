@@ -4,6 +4,14 @@ Frontend: https://jump-king-web.pages.dev/. API/WebSocket: https://jump-king-ser
 
 EC2 chạy Colyseus bằng systemd; Nginx kiểm tra token của Worker rồi chuyển tiếp tới cổng 2567. Worker dùng hostname AWS cấp vì Cloudflare không hỗ trợ `fetch()` trực tiếp tới IP. Kết nối từ trình duyệt tới Cloudflare dùng HTTPS/WSS; kết nối từ Worker tới EC2 dùng HTTP và token riêng.
 
+## Bản cập nhật 11/10/2026
+
+Code game: `f1153318`; bản Pages: https://534637d3.jump-king-web.pages.dev/ (production https://jump-king-web.pages.dev/). Đã cập nhật backend trên EC2 hiện có, giữ Nginx và timer dừng trước hạn Free plan.
+
+Đã xác minh build, 148 test đơn vị, 23 test trình duyệt cục bộ và 12 test trực tiếp trên production. Kiểm tra gồm save cũ, Cap, giữ trang bị qua chiến dịch, thành tích, cắt cảnh/phần thưởng, cảm ứng, Community và Race hai người. Kết nối WSS production có trạng thái vật phẩm/hội thoại mới và từ chối yêu cầu mặc Snake Ring chưa sở hữu. Service và timer đều active; số lần service tự khởi động lại là 0 sau cập nhật.
+
+Kho đồ chơi đơn và thành tích nằm trong localStorage; kho đồ online nằm trong phiên phòng. Các giới hạn so với bản Windows được ghi tại [README](../README.md#mức-độ-tương-đương-bản-gốc).
+
 ## Tài nguyên AWS
 
 | Cấu hình       | Giá trị                                        |
