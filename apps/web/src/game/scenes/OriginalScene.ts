@@ -168,6 +168,7 @@ export class OriginalScene extends Phaser.Scene {
   private cutscenes?: OriginalCutscenes;
   private activeCutscene?: 'intro' | 'ending';
   private peers = new Map<string, Phaser.GameObjects.Sprite>();
+  private appliedSnapshots = new Map<string, string>();
   private sequence = 0;
   private pending: (PlayerInput & { seq: number })[] = [];
   private canMove = true;
@@ -470,6 +471,7 @@ export class OriginalScene extends Phaser.Scene {
       return;
     }
     this.room = room;
+    this.appliedSnapshots.clear();
     room.onLeave(() => {
       if (!this.disposed) this.fail('Đã mất kết nối tới phòng chơi.');
     });
@@ -481,17 +483,20 @@ export class OriginalScene extends Phaser.Scene {
       this.canMove = !race || room.state.status === 'RUNNING';
       const player = room.state.players.get(room.sessionId);
       if (player?.snapshot) {
-        const snapshot: OriginalState = JSON.parse(player.snapshot);
         this.pending = this.pending.filter(
           (input) => input.seq > player.lastProcessedInputSeq,
         );
-        this.simulation.restore(snapshot);
-        for (const input of this.pending)
-          this.simulation.tick(
-            this.canMove
-              ? input
-              : { ...input, left: false, right: false, jump: false },
-          );
+        if (this.appliedSnapshots.get(room.sessionId) !== player.snapshot) {
+          this.appliedSnapshots.set(room.sessionId, player.snapshot);
+          const snapshot: OriginalState = JSON.parse(player.snapshot);
+          this.simulation.restore(snapshot);
+          for (const input of this.pending)
+            this.simulation.tick(
+              this.canMove
+                ? input
+                : { ...input, left: false, right: false, jump: false },
+            );
+        }
         if (player.finished && !this.completed) {
           this.recordAchievements(true, JSON.parse(player.finishEquipment));
           this.completed = true;
@@ -510,6 +515,8 @@ export class OriginalScene extends Phaser.Scene {
             .setDepth(9);
           this.peers.set(id, sprite);
         }
+        if (this.appliedSnapshots.get(id) === peer.snapshot) continue;
+        this.appliedSnapshots.set(id, peer.snapshot);
         const state: OriginalState = JSON.parse(peer.snapshot);
         sprite
           .setPosition(Math.trunc(state.x) + 9, Math.trunc(state.y) + 26)
@@ -533,6 +540,7 @@ export class OriginalScene extends Phaser.Scene {
         if (!room.state.players.has(id)) {
           sprite.destroy();
           this.peers.delete(id);
+          this.appliedSnapshots.delete(id);
           this.effects?.removePlayer(id);
         }
       this.emitUi();

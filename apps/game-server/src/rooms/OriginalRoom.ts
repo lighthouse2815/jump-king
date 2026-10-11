@@ -8,6 +8,7 @@ import {
 } from '@jump-king/maps';
 import { OriginalSimulation, PlayerInput } from '@jump-king/physics';
 import { OriginalPlayerState, OriginalTowerState } from '@jump-king/protocol';
+import { isSnapshotTick } from '../networking/snapshotCadence';
 
 type SequencedInput = PlayerInput & { seq: number };
 const idle: SequencedInput = {
@@ -26,6 +27,7 @@ export class OriginalRoom extends Room<OriginalTowerState> {
   private lastInputs = new Map<string, SequencedInput>();
   private latestSequences = new Map<string, number>();
   private receivedAt = new Map<string, number>();
+  private simulationTicks = 0;
 
   onCreate(options: { campaign?: string }) {
     if (
@@ -131,6 +133,7 @@ export class OriginalRoom extends Room<OriginalTowerState> {
   }
 
   update() {
+    const publishSnapshot = isSnapshotTick(++this.simulationTicks);
     const running = !this.race || this.state.status === 'RUNNING';
     for (const [sessionId, simulation] of this.simulations) {
       const player = this.state.players.get(sessionId)!;
@@ -146,8 +149,7 @@ export class OriginalRoom extends Room<OriginalTowerState> {
           ? this.lastInputs.get(sessionId) || idle
           : idle;
       simulation.tick(running ? input : idle);
-      player.snapshot = JSON.stringify(simulation.getState());
-      if (
+      const finished =
         running &&
         isOriginalFinish(
           this.campaign,
@@ -155,18 +157,19 @@ export class OriginalRoom extends Room<OriginalTowerState> {
           simulation.body.position.y,
           simulation.body.isGrounded,
           simulation.screen,
-        )
-      ) {
+        );
+      if (finished) {
         player.finished = true;
         player.finishEquipment = JSON.stringify(
           simulation.adventure?.equipped || [],
         );
         simulation.adventure?.complete(this.campaign);
-        player.snapshot = JSON.stringify(simulation.getState());
         player.finishTime = this.race
           ? Date.now() - this.state.startTime
           : (simulation.elapsedTicks / 60) * 1000;
       }
+      if (publishSnapshot || finished)
+        player.snapshot = JSON.stringify(simulation.getState());
     }
     if (
       this.race &&
