@@ -471,9 +471,10 @@ export function OriginalGamePage({
                 <button
                   className="original-ui-button"
                   onClick={() => {
-                    retryRoom.current = ui.roomId
-                      ? { id: ui.roomId, campaign: activeCampaign }
-                      : null;
+                    retryRoom.current =
+                      ui.roomId && ui.players > 1
+                        ? { id: ui.roomId, campaign: activeCampaign }
+                        : null;
                     setGeneration((value) => value + 1);
                   }}
                 >
