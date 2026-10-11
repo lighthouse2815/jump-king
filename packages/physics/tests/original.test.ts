@@ -1,0 +1,86 @@
+import { describe, it, expect } from 'vitest';
+import { OriginalSimulation, ORIGINAL_PHYSICS } from '../src';
+import { ORIGINAL_SCREENS, isOriginalFinish } from '../../maps/src';
+
+const idle = { left: false, right: false, jump: false };
+function grounded() {
+  const simulation = new OriginalSimulation(ORIGINAL_SCREENS);
+  for (let i = 0; i < 30; i++) simulation.tick(idle);
+  return simulation;
+}
+
+describe('Jump King 1.04 physics', () => {
+  it('loads every original 60 × 45 tile screen and lands at the original camp', () => {
+    expect(ORIGINAL_SCREENS).toHaveLength(169);
+    for (const screen of ORIGINAL_SCREENS) {
+      expect(screen.tiles).toHaveLength(45);
+      expect(screen.tiles.every(row => row.length === 60)).toBe(true);
+    }
+    const simulation = grounded();
+    expect(simulation.body.isGrounded).toBe(true);
+    expect(simulation.body.position.y).toBe(302);
+    expect(simulation.body.size.x).toBe(18);
+    expect(simulation.body.size.y).toBe(26);
+  });
+
+  it('automatically jumps at 0.6 seconds and keeps airborne direction locked', () => {
+    const simulation = grounded();
+    for (let i = 0; i < 36; i++) simulation.tick({ ...idle, right: true, jump: true });
+    expect(simulation.jumps).toBe(1);
+    expect(simulation.chargeTicks).toBe(0);
+    expect(simulation.body.velocity.y).toBe(ORIGINAL_PHYSICS.jumpVelocity);
+    expect(simulation.body.velocity.x).toBe(3.5);
+    simulation.tick({ ...idle, left: true, jump: true });
+    expect(simulation.body.velocity.x).toBe(3.5);
+    expect(simulation.body.isGrounded).toBe(false);
+  });
+
+  it('uses proportional short jumps and the four-frame directional buffer', () => {
+    const simulation = grounded();
+    for (let i = 0; i < 17; i++) simulation.tick({ ...idle, right: true, jump: true });
+    simulation.tick(idle);
+    expect(simulation.body.velocity.y).toBeCloseTo(ORIGINAL_PHYSICS.jumpVelocity / 2, 5);
+    expect(simulation.body.velocity.x).toBe(3.5);
+  });
+
+  it('bounces off a wall instead of losing all horizontal speed', () => {
+    const simulation = grounded();
+    simulation.body.position.set(452, 120);
+    simulation.body.velocity.set(3.5, -4);
+    simulation.body.isGrounded = false;
+    simulation.tick(idle);
+    expect(simulation.body.velocity.x).toBe(-1.75);
+    expect(simulation.knocked).toBe(true);
+    expect(simulation.body.position.x + 18).toBeLessThanOrEqual(472);
+  });
+
+  it('caps fall speed and applies a half-second splat after a long fall', () => {
+    const simulation = new OriginalSimulation(ORIGINAL_SCREENS, 240, 100);
+    simulation.body.isGrounded = false;
+    simulation.body.velocity.y = 10;
+    for (let i = 0; i < 40 && simulation.falls === 0; i++) simulation.tick(idle);
+    expect(simulation.falls).toBe(1);
+    expect(simulation.splatTicks).toBeGreaterThan(0);
+    simulation.tick({ ...idle, right: true });
+    expect(simulation.body.velocity.x).toBe(0);
+  });
+
+  it('restores a snapshot and deterministically replays buffered input', () => {
+    const first = grounded();
+    for (let i = 0; i < 15; i++) first.tick({ ...idle, right: true, jump: true });
+    const second = new OriginalSimulation(ORIGINAL_SCREENS);
+    second.restore(first.getState());
+    for (let i = 0; i < 80; i++) {
+      const input = { left: i > 50, right: i < 50, jump: i < 10 };
+      first.tick(input); second.tick(input);
+      expect(second.getState()).toEqual(first.getState());
+    }
+  });
+
+  it('requires landing on the correct side of the final screen to win', () => {
+    expect(isOriginalFinish('original', 327, -15000, true, 42)).toBe(true);
+    expect(isOriginalFinish('original', 327, -15000, false, 42)).toBe(false);
+    expect(isOriginalFinish('original', 200, -15000, true, 42)).toBe(false);
+    expect(isOriginalFinish('nbp', 100, 144 - 13 - 99 * 360, true, 99)).toBe(true);
+  });
+});
