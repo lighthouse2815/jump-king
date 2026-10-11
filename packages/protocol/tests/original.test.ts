@@ -1,0 +1,28 @@
+import { it, expect } from 'vitest';
+import { OriginalPlayerState, OriginalTowerState } from '../src/original';
+import { GameState, PlayerState } from '../src';
+
+it('encodes the authoritative snapshot and propagates later changes', () => {
+  const server = new OriginalTowerState();
+  const player = new OriginalPlayerState();
+  player.nickname = 'King'; player.snapshot = '{"x":231}';
+  server.players.set('session', player);
+  const client = new OriginalTowerState();
+  client.decode(server.encodeAll());
+  server.discardAllChanges();
+  expect(client.players.get('session')?.snapshot).toBe('{"x":231}');
+  player.snapshot = '{"x":234.5}'; player.lastProcessedInputSeq = 1; player.ready = true;
+  client.decode(server.encode());
+  expect(client.players.get('session')?.snapshot).toBe('{"x":234.5}');
+  expect(client.players.get('session')?.lastProcessedInputSeq).toBe(1);
+  expect(client.players.get('session')?.ready).toBe(true);
+});
+
+it('preserves encoding of the existing multiplayer protocol', () => {
+  const server = new GameState();
+  const player = new PlayerState(); player.x = 400; player.y = 500;
+  server.players.set('legacy-session', player);
+  const client = new GameState(); client.decode(server.encodeAll());
+  expect(client.players.get('legacy-session')?.x).toBe(400);
+  expect(client.players.get('legacy-session')?.y).toBe(500);
+});

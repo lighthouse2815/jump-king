@@ -5,7 +5,8 @@
     "rootDir": "./src",
     "module": "CommonJS",
     "moduleResolution": "node",
-    "declaration": true
+    "declaration": true,
+    "useDefineForClassFields": false
   },
   "include": ["src"]
 }
