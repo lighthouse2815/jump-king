@@ -23,6 +23,11 @@ const frames = [
 export class OriginalAdventureVisuals {
   private items = new Map<string, Phaser.GameObjects.Image>();
   private birds = new Map<string, Phaser.GameObjects.Sprite>();
+  private messages = new Map<string, {
+    text: Phaser.GameObjects.BitmapText;
+    full: string;
+    wrapped: string;
+  }>();
   private costumes = new Map<string, Map<string, Phaser.GameObjects.Sprite>>();
   private lightning: Phaser.GameObjects.Rectangle;
   private gargoyles: {
@@ -82,6 +87,43 @@ export class OriginalAdventureVisuals {
     }
   }
   sync(adventure: OriginalAdventure, screen: number, ticks: number) {
+    const messageIds = new Set<string>();
+    for (const definition of adventure.messages.definitions) {
+      if (definition.screen !== screen) continue;
+      messageIds.add(definition.id);
+      let visual = this.messages.get(definition.id);
+      if (!visual) {
+        const text = this.scene.add.bitmapText(0, 0, definition.font, '')
+          .setName(`message:${definition.id}`)
+          .setLineSpacing(12 - this.manifest.fonts[definition.font].lineHeight)
+          .setOrigin(definition.bubble.anchor.X === 'Right' ? 1 : 0, 0)
+          .setDepth(31);
+        if (definition.bubble.anchor.X === 'Right') text.setRightAlign();
+        visual = { text, full: '', wrapped: '' };
+        this.messages.set(definition.id, visual);
+      }
+      const line = adventure.messages.line(definition.id);
+      visual.text.setVisible(!!line);
+      if (!line) continue;
+      if (visual.full !== line.text) {
+        visual.full = line.text;
+        visual.text.setText(line.text).setMaxWidth(definition.bubble.width);
+        visual.wrapped = visual.text.getTextBounds().wrappedText;
+      }
+      visual.text.setMaxWidth(0).setText(visual.wrapped.substring(0, line.characters));
+      const rows = visual.text.text.split('\n').length;
+      visual.text.setPosition(
+        definition.anchor.x + (definition.bubble.direction === 'Right' ? 10 : -10),
+        definition.anchor.y - screen * 360 - 40 - this.manifest.fonts[definition.font].lineHeight -
+          (definition.bubble.anchor.Y === 'Down' ? (rows - 1) * 12 : 0),
+      );
+    }
+    for (const [id, visual] of this.messages) {
+      if (!messageIds.has(id)) {
+        visual.text.destroy();
+        this.messages.delete(id);
+      }
+    }
     const wanted = new Set<string>();
     for (const item of adventure.getWorldItems()) {
       if (
@@ -223,6 +265,8 @@ export class OriginalAdventureVisuals {
     });
   }
   destroy() {
+    this.messages.forEach(visual => visual.text.destroy());
+    this.messages.clear();
     this.items.forEach((sprite) => sprite.destroy());
     this.birds.forEach((sprite) => sprite.destroy());
     for (const id of this.costumes.keys()) this.removePlayer(id);

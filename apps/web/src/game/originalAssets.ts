@@ -33,6 +33,12 @@ export interface ScrollLayer {
   foreground?: boolean;
 }
 export interface OriginalManifest {
+  fonts: Record<string, {
+    texture: string;
+    data: string;
+    lineHeight: number;
+    defaultCharacter: string;
+  }>;
   textures: Record<string, TextureInfo>;
   sounds: Record<string, { file: string; duration: number }>;
   screens: OriginalVisualScreen[];
@@ -43,6 +49,7 @@ export const asArray = <T>(value: T | T[] | undefined): T[] =>
   value === undefined ? [] : Array.isArray(value) ? value : [value];
 
 export interface OriginalNpc {
+  font: string;
   name: string;
   screen: number;
   texture: string;

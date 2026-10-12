@@ -7,4 +7,5 @@ export * from './OriginalAdventure';
 export * from './OriginalAchievements';
 export * from './OriginalWorldEvents';
 export * from './OriginalDialogue';
+export * from './OriginalMessages';
 export * from './OriginalAutoplayTour';

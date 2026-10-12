@@ -461,7 +461,7 @@ export class OriginalSimulation {
         this.windEnabled = true;
       this.screen = nextScreen;
     }
-    const adventure = this.adventure?.tick(this.getState()) || [];
+    const adventure = this.adventure?.tick(this.getState(), input) || [];
     const effects: OriginalMovementEffect[] = [];
     if (this.jumps > jumps) effects.push('jump');
     if (this.falls > falls) effects.push('splat');

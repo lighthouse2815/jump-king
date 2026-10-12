@@ -1,4 +1,10 @@
 import type { OriginalState } from './OriginalSimulation';
+import type { PlayerInput } from './PlayerController';
+import {
+  OriginalMessages,
+  type OriginalMessageDefinition,
+  type OriginalMessageState,
+} from './OriginalMessages';
 import {
   OriginalDialogue,
   type OriginalDialogueDefinition,
@@ -73,6 +79,7 @@ export interface BirdDefinition {
   positions: BirdPosition[];
 }
 export interface OriginalAdventureData {
+  messages?: OriginalMessageDefinition[];
   npcs?: OriginalDialogueDefinition[];
   items: WorldItemDefinition[];
   itemTextures: Record<string, string>;
@@ -102,6 +109,7 @@ export interface MerchantState {
   ticks: number;
 }
 export interface OriginalAdventureState {
+  messages?: OriginalMessageState;
   dialogue?: OriginalDialogueState;
   inventory: Record<string, number>;
   equipped: string[];
@@ -112,7 +120,7 @@ export interface OriginalAdventureState {
   npcTalks: Record<string, number>;
 }
 export interface AdventureEvent {
-  type: 'pickup' | 'sale' | 'flee';
+  type: 'pickup' | 'sale' | 'flee' | 'speech';
   item?: string;
   name?: string;
   x?: number;
@@ -154,11 +162,13 @@ const cleanCounts = (counts: Record<string, number> | undefined) =>
 export class OriginalAdventure {
   private state: OriginalAdventureState;
   readonly dialogue: OriginalDialogue;
+  readonly messages: OriginalMessages;
   constructor(
     readonly data: OriginalAdventureData,
     initial?: OriginalAdventureState,
   ) {
     this.dialogue = new OriginalDialogue(data.npcs || []);
+    this.messages = new OriginalMessages(data.messages || []);
     this.state = {
       inventory: {},
       equipped: [],
@@ -373,10 +383,13 @@ export class OriginalAdventure {
       this.startStage(definition, 'sold');
     } else this.startStage(definition, 'busy');
   }
-  tick(player: OriginalState) {
+  tick(player: OriginalState, input?: PlayerInput) {
+    const speaking = this.messages.tick(player, input);
     for (const name of this.dialogue.tick(player, this.state.flags))
       this.recordTalk(name);
-    const events: AdventureEvent[] = [];
+    const events: AdventureEvent[] = speaking
+      ? [{ type: 'speech', sound: 'audio/talking' }]
+      : [];
     const box = {
       x: Math.trunc(player.x),
       y: Math.trunc(player.y),
@@ -452,6 +465,7 @@ export class OriginalAdventure {
   }
   getState(): OriginalAdventureState {
     return {
+      messages: this.messages.getState(),
       dialogue: this.dialogue.getState(),
       inventory: { ...this.state.inventory },
       equipped: [...this.state.equipped],
@@ -473,6 +487,7 @@ export class OriginalAdventure {
     };
   }
   restore(state: OriginalAdventureState) {
+    this.messages.restore(state.messages);
     if (state.dialogue) this.dialogue.restore(state.dialogue);
     this.state.inventory = cleanCounts(state.inventory);
     this.state.equipped = [];

@@ -9,7 +9,7 @@ import type { CampaignId } from '@jump-king/maps';
  * Parent owns asset loading, simulation/input suspension, ambience and save persistence.
  * onComplete fires when the intro ends / the ending picture appears (including skip).
  * onDismiss implements EndingPictureScreen's two-second wait followed by any input.
- * SpriteFont assets are not in the web manifest: supply fontFamily for matching text.
+ * Imported SpriteFont atlases supply the original menu glyphs; fontFamily can override them.
  */
 
 const SKINS: Record<string, { texture: string; layer: number }> = {
@@ -829,12 +829,18 @@ export class OriginalCutscenes {
   }
 
   private text(x: number, y: number, value: string) {
-    const text = this.scene.add.text(x, y, value, {
-      fontFamily: this.options.fontFamily ?? 'monospace',
-      fontSize: `${this.options.fontSize ?? 13}px`,
-      color: '#ffffff',
-      align: 'center',
-    });
+    const font = 'font/sf_litter_lover2_bold';
+    const text =
+      !this.options.fontFamily && this.scene.cache.bitmapFont.has(font)
+        ? this.scene.add
+            .bitmapText(x, y, font, value, this.options.fontSize)
+            .setCenterAlign()
+        : this.scene.add.text(x, y, value, {
+            fontFamily: this.options.fontFamily ?? 'monospace',
+            fontSize: `${this.options.fontSize ?? 13}px`,
+            color: '#ffffff',
+            align: 'center',
+          });
     this.hud!.add(text);
     return text;
   }

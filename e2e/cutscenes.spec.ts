@@ -33,6 +33,9 @@ async function mount(
             height: 360,
             scene: {
               preload() {
+                for (const [key, font] of Object.entries(manifest.fonts) as [string, any][]) {
+                  this.load.bitmapFont(key, `/original/${font.texture}`, `/original/${font.data}`);
+                }
                 for (const key of module.ORIGINAL_CUTSCENE_TEXTURE_KEYS) {
                   this.load.image(
                     key,
@@ -89,6 +92,19 @@ async function mount(
   );
   expect(loaded).toEqual({ ready: true });
 }
+
+test('uses the original bitmap font for intro text', async ({ page }) => {
+  await mount(page);
+  const text = await page.evaluate(() => {
+    const { scene, cutscene } = (window as any).cutsceneTest;
+    cutscene.playIntro({ newGame: true });
+    const hud = scene.children.list.find((child: any) => child.list?.some((object: any) => typeof object.text === 'string'));
+    const text = hud.list.find((object: any) => typeof object.text === 'string');
+    return { type: text.type, font: text.font, text: text.text };
+  });
+  expect(text).toMatchObject({ type: 'BitmapText', font: 'font/sf_litter_lover2_bold' });
+  expect(text.text).toContain('Legend has it');
+});
 
 test('intro gates new solo runs and can be skipped while the scene is paused', async ({
   page,

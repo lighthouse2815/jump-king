@@ -191,7 +191,7 @@ export class OriginalScene extends Phaser.Scene {
   private npcs: {
     info: OriginalNpc;
     sprite: Phaser.GameObjects.Sprite;
-    text: Phaser.GameObjects.Text;
+    text: Phaser.GameObjects.BitmapText;
     bubble: Phaser.GameObjects.Graphics;
     wait: number;
     elapsed: number;
@@ -641,6 +641,15 @@ export class OriginalScene extends Phaser.Scene {
             return;
           }
           let count = 0;
+          for (const [key, font] of Object.entries(this.manifest.fonts)) {
+            if (this.cache.bitmapFont.has(key)) continue;
+            this.load.bitmapFont(
+              key,
+              originalUrl(font.texture),
+              originalUrl(font.data),
+            );
+            count++;
+          }
           for (const key of new Set(textures)) {
             if (this.textures.exists(key)) continue;
             const texture = this.manifest.textures[key];
@@ -888,12 +897,9 @@ export class OriginalScene extends Phaser.Scene {
         .setFlipX(npc.bubble.direction === 'Left');
       const bubble = this.add.graphics().setDepth(30).setVisible(false);
       const text = this.add
-        .text(0, 0, '', {
-          fontFamily: 'monospace',
-          fontSize: '9px',
-          color: '#e4dfcd',
-          wordWrap: { width: (npc.bubble.width || 160) - 14 },
-        })
+        .bitmapText(0, 0, npc.font, '')
+        .setMaxWidth((npc.bubble.width || 160) - 14)
+        .setTint(0xe4dfcd)
         .setDepth(31)
         .setVisible(false);
       this.npcs.push({
