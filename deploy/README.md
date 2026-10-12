@@ -4,6 +4,32 @@ Frontend: https://jump-king-web.pages.dev/. API/WebSocket trực tiếp: https:/
 
 EC2 chạy Colyseus bằng systemd. Nginx nhận HTTPS/WSS trực tiếp trên cổng 443 bằng chứng chỉ Let's Encrypt rồi chuyển tiếp nội bộ tới cổng 2567. Frontend vẫn nằm trên Pages. Endpoint Worker cũ được giữ để dự phòng; chỉ endpoint dự phòng này dùng origin token.
 
+## Bản cập nhật 12/10/2026
+
+Đã triển khai frontend và backend từ checkout sạch của commit `858b2050` đã push.
+Production vẫn là https://jump-king-web.pages.dev/; bản Pages tương ứng:
+https://5502f129.jump-king-web.pages.dev/. Cloudflare xác nhận deployment
+`5502f129-2e76-4515-935f-7c648f194abb` thuộc environment production, nhánh `main`, trạng thái success.
+HTML trên link production khớp bản build, dùng bundle `index-BOPJlJ65.js`.
+
+Backend vẫn chạy trên EC2 cũ `47.129.183.31`, qua HTTPS/WSS DuckDNS cũ.
+File `/opt/jump-king/build/revision.txt` ghi đầy đủ SHA của bản mới. Gói runtime trước cập nhật
+được sao lưu tại `~/jump-king-deploy/backend-before-20261012-858b2050.tar.gz` trên EC2.
+Service chạy ổn định, `NRestarts=0`; health trả `{"status":"ok"}`. Nginx kiểm tra cấu hình thành công;
+timer gia hạn SSL và timer dừng trước hạn Free plan vẫn active. Không đổi cấu hình hạ tầng hiện có.
+
+Bản này gồm các sửa quyền tay cầm/lưu dữ liệu, cache âm thanh HTTP 206, hoạt họa nhân vật online
+khác và âm thanh nhảy/tiếp đất/ngã/va chạm theo sự kiện server. Build Cloudflare thành công;
+153 test của workspace đã qua trước triển khai.
+
+Trên link production cũ, 6 test Playwright chơi đơn/lưu/tiếp tục và Race hai người đã qua
+trên Chromium, Edge 155 và Firefox 157 trên Linux. Thêm 6 kiểm tra Community/Race hai người
+trên ba trình duyệt quan sát khung hình đi bộ/tích lực/nhảy/rơi, sự kiện phát âm thanh thật của
+Phaser, tiếng nhảy/tiếp đất của người khác, tắt tiếng và không phát trùng tiếng nhảy của mình;
+không có lỗi JavaScript. Probe hai client Colyseus qua WSS production cũng nhận đúng một lần
+nhảy và tiếp đất từ server. Các kiểm tra này không đo âm thanh phát ra loa vật lý hoặc xác minh
+từng khung hình của bản Windows.
+
 ## WSS trực tiếp qua DuckDNS
 
 Domain `jumpking-lighthouse2815.duckdns.org` trỏ về `47.129.183.31`. Security group cho phép TCP 443; TCP 2567 vẫn chỉ phục vụ nội bộ. `certbot.timer` tự gia hạn chứng chỉ bằng HTTP challenge; hook `renew-nginx.sh` kiểm tra rồi reload Nginx sau khi gia hạn.
