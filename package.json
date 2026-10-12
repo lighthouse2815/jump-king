@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "import:original": "node scripts/import-original.cjs",
+    "import:details": "node scripts/import-original-details.cjs",
     "dev": "pnpm build && pnpm --parallel --filter web --filter game-server dev",
     "start": "pnpm --filter game-server start",
     "build:cloudflare": "VITE_SERVER_URL=${VITE_SERVER_URL:-wss://jumpking-lighthouse2815.duckdns.org} VITE_MULTIPLAYER_DISABLED=true pnpm build",
@@ -11,7 +12,7 @@
     "deploy:server": "wrangler deploy --config deploy/cloudflare-server/wrangler.jsonc",
     "test:e2e": "playwright test",
     "build": "pnpm -r run build",
-    "test": "pnpm -r run test",
+    "test": "node --test scripts/tests/*.test.cjs && pnpm -r run test",
     "lint": "pnpm -r run lint"
   },
   "engines": {
