@@ -160,3 +160,19 @@ curl --fail https://jumpking-lighthouse2815.duckdns.org/health
 ```
 
 Worker secret `ORIGIN_TOKEN` phải khớp `.origin-token` trên EC2. Khi xoay token, dùng `wrangler secret put` với stdin từ file riêng rồi chạy lại cấu hình Nginx; không đưa token vào dòng lệnh hoặc Git. Cấu hình Worker chỉ chứa `GAME_ORIGIN`, không chứa secret.
+
+## Deploy tự động bằng GitHub Actions
+
+Workflow [Deploy production](../.github/workflows/deploy.yml) chạy khi push lên `main`
+hoặc chạy thủ công trên nhánh `main`. GitHub build, chạy test workspace và test chat bằng
+Chromium/server thật, rồi tạo hai artifact. Job backend chạy trên runner EC2 có label
+`jump-king-production`, sao lưu runtime, cập nhật và kiểm tra health; nếu lỗi, script
+[apply-backend.sh](ec2/apply-backend.sh) khôi phục gói cũ. Sau khi backend thành công,
+job frontend upload artifact lên Cloudflare Pages production. Các lượt deploy chạy lần lượt.
+
+Repository cần secret `CLOUDFLARE_API_TOKEN` có quyền **Account → Cloudflare Pages → Edit**
+cho account chứa project, và variable `CLOUDFLARE_ACCOUNT_ID`. Runner EC2 cần đăng ký
+với repository này và chạy bằng systemd dưới user `ubuntu`; chỉ nhận job triển khai,
+phần build/test chạy trên runner GitHub. Không cần khóa SSH trong GitHub Secrets.
+Theo dõi kết quả tại https://github.com/lighthouse2815/jump-king/actions.
+Timer dừng EC2 trước hạn Free plan vẫn áp dụng; khi EC2 dừng, job backend không chạy được.
