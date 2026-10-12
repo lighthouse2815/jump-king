@@ -140,6 +140,20 @@ for (const [campaign, equipped, tsuchinokoDone, picture, award] of [
       scene.time.timeScale = 30;
       scene.tweens.timeScale = 30;
       scene.anims.globalTimeScale = 30;
+      const credits: string[] = [];
+      (window as any).cutsceneTest.credits = credits;
+      const collect = (objects: any[]) => {
+        for (const object of objects) {
+          if (
+            typeof object.text === 'string' &&
+            object.alpha > 0 &&
+            !credits.includes(object.text)
+          )
+            credits.push(object.text);
+          if (object.list) collect(object.list);
+        }
+      };
+      scene.events.on('postupdate', () => collect(scene.children.list));
       cutscene.playEnding();
     });
     await expect
@@ -160,12 +174,27 @@ for (const [campaign, equipped, tsuchinokoDone, picture, award] of [
         picture,
         completed,
         awards,
+        credits: (window as any).cutsceneTest.credits,
         camera: [scene.cameras.main.scrollX, scene.cameras.main.scrollY],
         ownObjects: scene.children.list.length,
       };
     });
     expect(result.picture).toBe(picture);
     expect(result.awards).toContain(award);
+    expect(result.credits).toContain('lighthouse2815');
+    expect(result.credits.indexOf('lighthouse2815')).toBeLessThan(
+      result.credits.indexOf('NEXILE'),
+    );
+    expect(result.credits).toEqual(
+      expect.arrayContaining([
+        'nvbangg',
+        'Lê Thị Ánh Dương',
+        'Trần Đình Khánh Dư',
+        'Erik Säll',
+        'Thomas Härdin',
+        'Wilhelm Ohrås',
+      ]),
+    );
     expect(result.completed).toHaveLength(1);
     expect(result.ownObjects).toBe(1);
     expect(result.camera).toEqual([

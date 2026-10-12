@@ -249,6 +249,7 @@ grid('tsuchinokoFly', '0 1 2', '0,0 1,0 2,0', 48, 32, 0, 64, 0.5, 0.5);
 
 const INTRO_TEXT = 'Legend has it there is a\nsmoking hot babe at the top...';
 const CREDITS: readonly [string, ...string[]][] = [
+  ['Web & Online Development', 'lighthouse2815'],
   [
     'Nexile',
     'Erik Säll',
@@ -286,7 +287,14 @@ const CREDITS: readonly [string, ...string[]][] = [
   ],
   ['Nils Eklöf', 'Music', 'Ambience', 'Sound Effects'],
   ['Elias Thörnlund', 'Music', 'Ambience', 'Sound Effects'],
-  ['Special Thanks to:', 'Thomas Härdin', 'Wilhelm Ohrås'],
+  [
+    'Special Thanks to:',
+    'nvbangg',
+    'Lê Thị Ánh Dương',
+    'Trần Đình Khánh Dư',
+    'Thomas Härdin',
+    'Wilhelm Ohrås',
+  ],
 ];
 const TICK = 1 / 60;
 const GRAVITY = Math.fround(153 / 595);
