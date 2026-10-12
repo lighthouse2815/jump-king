@@ -585,7 +585,8 @@ export class OriginalScene extends Phaser.Scene {
             if (this.cache.audio.exists(key)) continue;
             const sound = this.manifest.sounds[key];
             if (!sound) continue;
-            this.load.audio(key, originalUrl(sound.file));
+            // HTML Audio caches range responses; Phaser's XHR loader requires HTTP 200.
+            this.load.audio(key, `${originalUrl(sound.file)}?decode=1`);
             count++;
           }
           if (!count) {
