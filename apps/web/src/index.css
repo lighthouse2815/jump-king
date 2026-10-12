@@ -304,6 +304,13 @@ kbd {
 .ending-actions p { margin: 0 0 4px; }
 .online-hud { position: absolute; right: 8px; top: 8px; text-align: right; font-size: 11px; }
 .online-hud p { margin: 0 0 3px; }
+.online-cheat { width: 184px; margin: 6px 0; padding: 5px; border: 1px solid #808080; background: #000c; font-family: monospace; font-size: 10px; text-align: left; pointer-events: auto; }
+.online-cheat label { display: block; margin-bottom: 3px; }
+.online-cheat-entry { display: flex; gap: 4px; margin-bottom: 4px; }
+.online-cheat input { width: 100%; min-width: 0; border: 1px solid #808080; padding: 3px; background: #111; color: #fff; font: inherit; }
+.online-cheat button { white-space: nowrap; border: 1px solid #808080; padding: 2px 4px; background: #222; color: #fff; font: inherit; }
+.online-cheat button:disabled { opacity: .4; }
+.online-cheat [role="alert"] { color: #ffc896; }
 .room-chat { position: absolute; left: 8px; bottom: 8px; width: 220px; font-family: monospace; font-size: 10px; line-height: 14px; pointer-events: auto; }
 .room-chat-trigger { border: 1px solid #808080; padding: 2px 5px; background: #000b; color: #fff; font: inherit; opacity: .4; }
 .room-chat-panel { background: #000c; border: 1px solid #808080; padding: 5px; opacity: 0; visibility: hidden; transition: opacity 1s, visibility 1s; }

@@ -5,6 +5,8 @@ export interface PlayerInput {
   left: boolean;
   right: boolean;
   jump: boolean; // true when held
+  up?: boolean;
+  down?: boolean;
   seq?: number;
 }
 

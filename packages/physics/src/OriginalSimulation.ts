@@ -53,6 +53,7 @@ export interface OriginalState {
   jumps: number;
   falls: number;
   airChargeTicks?: number;
+  freeFlight?: boolean;
   adventure?: OriginalAdventureState;
 }
 
@@ -92,6 +93,7 @@ export class OriginalSimulation {
   elapsedTicks = 0;
   jumps = 0;
   falls = 0;
+  freeFlight = false;
   private airChargeTicks = 0;
   readonly adventure?: OriginalAdventure;
 
@@ -332,7 +334,51 @@ export class OriginalSimulation {
     return bumped;
   }
 
+  setFreeFlight(enabled: boolean) {
+    // Normal collision movement cannot resume from inside solid terrain.
+    if (!enabled && this.freeFlight && this.contact().solid) return false;
+    this.freeFlight = enabled;
+    this.body.velocity.set(0, 0);
+    this.body.isGrounded = false;
+    this.chargeTicks = 0;
+    this.airChargeTicks = 0;
+    this.prevJump = false;
+    this.jumpConsumed = false;
+    this.directions = [];
+    this.splatTicks = 0;
+    this.knocked = false;
+    this.onIce = this.onSnow = this.inWater = this.onSand = false;
+    this.windEnabled = false;
+    return true;
+  }
+
   tick(input: PlayerInput) {
+    if (this.freeFlight) {
+      const body = this.body;
+      const dx = Number(input.right) - Number(input.left);
+      const dy = Number(!!input.down) - Number(!!input.up);
+      body.velocity.set(
+        dx * ORIGINAL_PHYSICS.jumpSpeed,
+        dy * ORIGINAL_PHYSICS.jumpSpeed,
+      );
+      body.position.set(
+        clamp(f(body.position.x + body.velocity.x), 0, 480 - body.size.x),
+        clamp(
+          f(body.position.y + body.velocity.y),
+          -(this.screens.length - 1) * 360,
+          360 - body.size.y,
+        ),
+      );
+      body.isGrounded = false;
+      if (dx) this.direction = dx;
+      this.screen = this.screenAt(body.position.y + body.size.y / 2);
+      this.elapsedTicks++;
+      return {
+        bumped: false,
+        adventure: [],
+        effects: [] as OriginalMovementEffect[],
+      };
+    }
     const jumps = this.jumps,
       falls = this.falls,
       grounded = this.body.isGrounded;
@@ -448,6 +494,7 @@ export class OriginalSimulation {
       jumps: this.jumps,
       falls: this.falls,
       airChargeTicks: this.airChargeTicks,
+      freeFlight: this.freeFlight,
       ...(this.adventure ? { adventure: this.adventure.getState() } : {}),
     };
   }
@@ -473,6 +520,7 @@ export class OriginalSimulation {
     this.jumps = state.jumps;
     this.falls = state.falls;
     this.airChargeTicks = state.airChargeTicks || 0;
+    this.freeFlight = state.freeFlight === true;
     if (state.adventure && this.adventure)
       this.adventure.restore(state.adventure);
   }

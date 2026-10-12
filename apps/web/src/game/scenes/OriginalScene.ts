@@ -73,6 +73,7 @@ export interface OriginalUi {
   x: number;
   y: number;
   paused: boolean;
+  freeFlight?: boolean;
   progress: number;
   autoplay?: {
     progress: number;
@@ -109,6 +110,7 @@ export interface OriginalSceneOptions {
   onUi: (state: OriginalUi) => void;
   onChat?: (messages: ChatMessage[]) => void;
   onChatError?: (message: string) => void;
+  onCheatError?: (message: string) => void;
   mode?: 'solo' | 'community' | 'race';
   roomId?: string;
   intro?: boolean;
@@ -145,7 +147,7 @@ export class OriginalScene extends Phaser.Scene {
   }[] = [];
   private ambience: HTMLAudioElement[] = [];
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
-  private touch = { left: false, right: false, jump: false };
+  private touch = { left: false, right: false, jump: false, up: false, down: false };
   private ready = false;
   private disposed = false;
   private paused = false;
@@ -384,7 +386,7 @@ export class OriginalScene extends Phaser.Scene {
         .setDepth(10);
       this.effects = new OriginalAdventureVisuals(this, this.manifest);
       this.keys = this.input.keyboard!.addKeys(
-        'LEFT,RIGHT,A,D,SPACE,UP,W,ESC',
+        'LEFT,RIGHT,A,D,SPACE,UP,DOWN,W,S,ESC',
       ) as Record<string, Phaser.Input.Keyboard.Key>;
       this.keys.ESC.on('down', () => this.setPaused(true));
       if (this.options.mode === 'community' || this.options.mode === 'race') {
@@ -498,6 +500,9 @@ export class OriginalScene extends Phaser.Scene {
     room.onMessage('chatError', (message: string) => {
       if (!this.disposed) this.options.onChatError?.(message);
     });
+    room.onMessage('cheatError', (message: string) => {
+      if (!this.disposed) this.options.onCheatError?.(message);
+    });
     room.send('chatHistory');
     room.onMessage(
       'playerEffects',
@@ -541,9 +546,9 @@ export class OriginalScene extends Phaser.Scene {
           this.simulation.restore(snapshot);
           for (const input of this.pending)
             this.simulation.tick(
-              this.canMove
+              this.canMove || this.simulation.freeFlight
                 ? input
-                : { ...input, left: false, right: false, jump: false },
+                : { ...input, left: false, right: false, jump: false, up: false, down: false },
             );
         }
         if (player.finished && !this.completed) {
@@ -602,9 +607,13 @@ export class OriginalScene extends Phaser.Scene {
     this.room?.send('chat', text);
   }
 
+  sendCheat(code: string) {
+    this.room?.send('cheat', code);
+  }
+
   setChatFocused(focused: boolean) {
     this.chatFocused = focused;
-    this.touch = { left: false, right: false, jump: false };
+    this.touch = { left: false, right: false, jump: false, up: false, down: false };
     this.input.keyboard?.resetKeys();
     if (this.input.keyboard) {
       this.input.keyboard.enabled = !this.paused && !focused;
@@ -985,10 +994,15 @@ export class OriginalScene extends Phaser.Scene {
           (pad?.axes[0] ?? 0) > 0.35,
         jump:
           this.keys.SPACE.isDown ||
-          this.keys.UP.isDown ||
-          this.keys.W.isDown ||
+          (!sim.freeFlight && (this.keys.UP.isDown || this.keys.W.isDown)) ||
           this.touch.jump ||
           !!pad?.buttons[0]?.pressed,
+        up:
+          this.keys.UP.isDown || this.keys.W.isDown || this.touch.up ||
+          !!pad?.buttons[12]?.pressed || (pad?.axes[1] ?? 0) < -0.35,
+        down:
+          this.keys.DOWN.isDown || this.keys.S.isDown || this.touch.down ||
+          !!pad?.buttons[13]?.pressed || (pad?.axes[1] ?? 0) > 0.35,
       };
       let tourInput: PlayerInput | undefined;
       try {
@@ -999,7 +1013,7 @@ export class OriginalScene extends Phaser.Scene {
       }
       const input =
         tourInput ||
-        (this.canMove && !this.chatFocused
+        ((this.canMove || sim.freeFlight) && !this.chatFocused
           ? rawInput
           : { left: false, right: false, jump: false });
       if (this.room) {
@@ -1347,7 +1361,7 @@ export class OriginalScene extends Phaser.Scene {
     }
   }
 
-  setControl(control: 'left' | 'right' | 'jump', down: boolean) {
+  setControl(control: 'left' | 'right' | 'jump' | 'up' | 'down', down: boolean) {
     this.touch[control] = down;
   }
   setMuted(muted: boolean) {
@@ -1360,7 +1374,7 @@ export class OriginalScene extends Phaser.Scene {
     if (paused && !this.paused) this.playSound('audio/gui_sfx/menu_open');
     this.paused = paused;
     this.accumulator = 0;
-    this.touch = { left: false, right: false, jump: false };
+    this.touch = { left: false, right: false, jump: false, up: false, down: false };
     this.input.keyboard?.resetKeys();
     if (this.input.keyboard) {
       this.input.keyboard.enabled = !paused && !this.chatFocused;
@@ -1467,6 +1481,7 @@ export class OriginalScene extends Phaser.Scene {
       x: sim?.body.position.x ?? 231,
       y: sim?.body.position.y ?? 302,
       paused: this.paused,
+      freeFlight: sim?.freeFlight ?? false,
       progress: this.progress,
       autoplay: this.tour
         ? {

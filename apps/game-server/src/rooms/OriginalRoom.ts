@@ -49,6 +49,30 @@ export class OriginalRoom extends Room<OriginalTowerState> {
     this.state.campaign = this.campaign;
     this.state.status = this.race ? 'WAITING' : 'PLAYING';
     this.setMetadata({ campaign: this.campaign });
+    this.onMessage('cheat', (client, code: unknown) => {
+      const player = this.state.players.get(client.sessionId);
+      const simulation = this.simulations.get(client.sessionId);
+      if (!player || !simulation || player.finished) return;
+      if (typeof code !== 'string' || code.length > 32) {
+        client.send('cheatError', 'Mã cheat không hợp lệ. Dùng FLY hoặc NORMAL.');
+        return;
+      }
+      const normalized = code.trim().toUpperCase();
+      if (normalized !== 'FLY' && normalized !== 'NORMAL') {
+        client.send('cheatError', 'Mã cheat không hợp lệ. Dùng FLY hoặc NORMAL.');
+        return;
+      }
+      if (!simulation.setFreeFlight(normalized === 'FLY')) {
+        client.send('cheatError', 'Hãy bay ra khỏi địa hình trước khi dùng NORMAL.');
+        return;
+      }
+      this.queues.get(client.sessionId)!.length = 0;
+      this.lastInputs.delete(client.sessionId);
+      // Drop prediction inputs already superseded by this mode change.
+      player.lastProcessedInputSeq =
+        this.latestSequences.get(client.sessionId) ?? -1;
+      player.snapshot = JSON.stringify(simulation.getState());
+    });
     this.onMessage('chatHistory', (client) => {
       if (this.state.players.has(client.sessionId))
         client.send('chatHistory', this.chatHistory);
@@ -90,6 +114,8 @@ export class OriginalRoom extends Room<OriginalTowerState> {
         typeof value.left !== 'boolean' ||
         typeof value.right !== 'boolean' ||
         typeof value.jump !== 'boolean' ||
+        (value.up !== undefined && typeof value.up !== 'boolean') ||
+        (value.down !== undefined && typeof value.down !== 'boolean') ||
         !Number.isSafeInteger(value.seq) ||
         value.seq < 0 ||
         value.seq > 2147483647 ||
@@ -105,6 +131,8 @@ export class OriginalRoom extends Room<OriginalTowerState> {
         left: value.left,
         right: value.right,
         jump: value.jump,
+        up: value.up === true,
+        down: value.down === true,
         seq: value.seq,
       });
     });
@@ -192,7 +220,9 @@ export class OriginalRoom extends Room<OriginalTowerState> {
         Date.now() - (this.receivedAt.get(sessionId) ?? 0) < 500
           ? this.lastInputs.get(sessionId) || idle
           : idle;
-      const event = simulation.tick(running ? input : idle);
+      const event = simulation.tick(
+        running || simulation.freeFlight ? input : idle,
+      );
       if (event.effects.length)
         this.broadcast('playerEffects', {
           sessionId,
@@ -204,6 +234,7 @@ export class OriginalRoom extends Room<OriginalTowerState> {
         });
       const finished =
         running &&
+        !simulation.freeFlight &&
         isOriginalFinish(
           this.campaign,
           simulation.body.position.x,

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Phaser from 'phaser';
 import { OriginalMenu, MenuItem } from '../components/OriginalMenu';
 import { RoomChat } from '../components/RoomChat';
+import { OnlineCheat } from '../components/OnlineCheat';
 import { ChatMessage } from '@jump-king/protocol';
 import {
   readStoredValue,
@@ -84,6 +85,9 @@ export function OriginalGamePage({
     : 'original';
   const game = useRef<Phaser.Game | null>(null);
   const scene = useRef<OriginalScene | null>(null);
+  const setOnlineInputFocused = useCallback((focused: boolean) => {
+    scene.current?.setChatFocused(focused);
+  }, []);
   const retryRoom = useRef<{
     id: string;
     campaign: CampaignId;
@@ -95,6 +99,7 @@ export function OriginalGamePage({
   const [ui, setUi] = useState(initialUi);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatError, setChatError] = useState('');
+  const [onlineCheatError, setOnlineCheatError] = useState('');
   const [generation, setGeneration] = useState(0);
   const fresh = useRef(false);
   const [muted, setMuted] = useState(
@@ -126,6 +131,7 @@ export function OriginalGamePage({
     setUi(initialUi);
     setChatMessages([]);
     setChatError('');
+    setOnlineCheatError('');
     const instance = new OriginalScene({
       campaign: activeCampaign,
       fresh: autoplay || fresh.current,
@@ -157,6 +163,9 @@ export function OriginalGamePage({
       },
       onChatError: (message) => {
         if (active) setChatError(message);
+      },
+      onCheatError: (message) => {
+        if (active) setOnlineCheatError(message);
       },
     });
     scene.current = instance;
@@ -287,7 +296,7 @@ export function OriginalGamePage({
       setNotice('Trình duyệt này không hỗ trợ toàn màn hình.');
     }
   };
-  const hold = (control: 'left' | 'right' | 'jump') => ({
+  const hold = (control: 'left' | 'right' | 'jump' | 'up' | 'down') => ({
     onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -436,6 +445,7 @@ export function OriginalGamePage({
           data-screen={ui.screen}
           data-location={ui.location}
           data-paused={ui.paused}
+          data-free-flight={ui.freeFlight ?? false}
           data-autoplay={autoplay}
           data-replay-progress={ui.autoplay?.progress}
         >
@@ -590,6 +600,19 @@ export function OriginalGamePage({
                 <p data-testid="player-count">
                   ● {ui.players} người trong phòng
                 </p>
+                {ui.status === 'PLAYING' && !menuVisible && (
+                  <OnlineCheat
+                    key={`${activeCampaign}-${generation}-${roomId}`}
+                    enabled={ui.freeFlight ?? false}
+                    connected={!!ui.roomId}
+                    error={onlineCheatError}
+                    onSend={(code) => {
+                      setOnlineCheatError('');
+                      scene.current?.sendCheat(code);
+                    }}
+                    onFocus={setOnlineInputFocused}
+                  />
+                )}
                 {mode === 'race' && (
                   <div className="race-hud">
                     <p data-testid="race-status">
@@ -659,13 +682,20 @@ export function OriginalGamePage({
             <button {...hold('right')} aria-label="Đi sang phải">
               →
             </button>
-            <button
-              {...hold('jump')}
-              className="jump-button"
-              aria-label="Giữ để nhảy"
-            >
-              NHẢY
-            </button>
+            {ui.freeFlight ? (
+              <>
+                <button {...hold('up')} aria-label="Bay lên">↑</button>
+                <button {...hold('down')} aria-label="Bay xuống">↓</button>
+              </>
+            ) : (
+              <button
+                {...hold('jump')}
+                className="jump-button"
+                aria-label="Giữ để nhảy"
+              >
+                NHẢY
+              </button>
+            )}
           </div>
           <div className="touch-menu-row">
             <button
