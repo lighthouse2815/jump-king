@@ -21,6 +21,7 @@ import { ErrorCode, Room } from 'colyseus.js';
 import { OriginalTowerState } from '@jump-king/protocol';
 import { networkManager } from '../networking/NetworkManager';
 import { readGamepads } from '../utils/gamepads';
+import { originalPlayerFrame } from '../originalPlayerFrame';
 import {
   OriginalManifest,
   OriginalDetails,
@@ -522,19 +523,7 @@ export class OriginalScene extends Phaser.Scene {
         sprite
           .setPosition(Math.trunc(state.x) + 9, Math.trunc(state.y) + 26)
           .setFlipX(state.direction < 0);
-        sprite.setFrame(
-          state.splat
-            ? 'splat'
-            : state.charge
-              ? 'charge'
-              : state.grounded
-                ? 'idle'
-                : state.knocked
-                  ? 'bounce'
-                  : state.vy < 0
-                    ? 'up'
-                    : 'fall',
-        );
+        sprite.setFrame(originalPlayerFrame(state));
         this.effects?.dress(id, sprite, state.adventure?.equipped || []);
       }
       for (const [id, sprite] of this.peers)
@@ -883,22 +872,16 @@ export class OriginalScene extends Phaser.Scene {
   private renderPlayer() {
     const sim = this.simulation,
       body = sim.body;
-    let frame = 'idle';
-    if (sim.splatTicks > 0) frame = 'splat';
-    else if (sim.chargeTicks > 0) frame = 'charge';
-    else if (!body.isGrounded)
-      frame = sim.knocked ? 'bounce' : body.velocity.y > 0 ? 'fall' : 'up';
-    else if (Math.abs(body.velocity.x) > 0.1 && !sim.onSnow) {
-      const step = sim.elapsedTicks % 28;
-      frame =
-        step < 10
-          ? 'walk_one'
-          : step < 14
-            ? 'walk_smear'
-            : step < 24
-              ? 'walk_two'
-              : 'walk_smear';
-    }
+    const frame = originalPlayerFrame({
+      splat: sim.splatTicks,
+      charge: sim.chargeTicks,
+      grounded: body.isGrounded,
+      knocked: sim.knocked,
+      vy: body.velocity.y,
+      vx: body.velocity.x,
+      snow: sim.onSnow,
+      ticks: sim.elapsedTicks,
+    });
     this.player
       .setPosition(
         Math.trunc(body.position.x) + 9,
