@@ -6,6 +6,27 @@ EC2 chạy Colyseus bằng systemd. Nginx nhận HTTPS/WSS trực tiếp trên c
 
 ## Bản cập nhật 12/10/2026
 
+### Chat trong phòng
+
+Đã triển khai frontend và backend của commit `2b9707ff` lên link production hiện có.
+Bản Pages: https://8672ca7d.jump-king-web.pages.dev/; bundle `index-DIdMpkfR.js`.
+Backend ghi SHA `2b9707ff8ba972c03b303baabce5af58d002cba7` trong
+`/opt/jump-king/build/revision.txt`. Gói trước cập nhật được sao lưu ở
+`~/jump-king-deploy/backend-before-2b9707ff8ba972c03b303baabce5af58d002cba7.tar.gz`.
+Service và Nginx active, `NRestarts=0`, health HTTPS trả `{"status":"ok"}`;
+timer SSL và hạn Free plan vẫn active.
+
+Chat giữ 50 tin trong bộ nhớ từng phòng, mờ sau 6 giây, hiện lại khi rê chuột,
+nhấn Enter hoặc chạm nút Chat. Ba tình huống Playwright chat đã qua trên production:
+Community, Race và validation/lịch sử/xóa phòng qua WSS thật. Bao gồm nhập tiếng Việt,
+hiển thị HTML dưới dạng văn bản, ngăn phím chat điều khiển nhân vật, cảm ứng,
+người mới xem lại lịch sử, giới hạn 200 ký tự, cooldown và tách biệt hai phòng.
+Test Community dùng một phòng server thật riêng để không phụ thuộc người đang chơi.
+Lượt đầu test Community gặp phòng có người chơi và không qua điều kiện đếm đúng hai người;
+sau khi tách phòng, test này đã qua. Kiểm tra lịch sử dùng 6 client; tải 20 client chưa được xác nhận ổn định.
+
+### Hoạt họa và âm thanh online
+
 Đã triển khai frontend và backend từ checkout sạch của commit `858b2050` đã push.
 Production vẫn là https://jump-king-web.pages.dev/; bản Pages tương ứng:
 https://5502f129.jump-king-web.pages.dev/. Cloudflare xác nhận deployment
