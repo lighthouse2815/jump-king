@@ -28,6 +28,8 @@ export interface OriginalScreen {
   teleport: number;
 }
 
+export type OriginalMovementEffect = 'jump' | 'land' | 'splat' | 'bump';
+
 export interface OriginalState {
   x: number;
   y: number;
@@ -331,6 +333,9 @@ export class OriginalSimulation {
   }
 
   tick(input: PlayerInput) {
+    const jumps = this.jumps,
+      falls = this.falls,
+      grounded = this.body.isGrounded;
     const bumped = this.move();
     this.elapsedTicks++;
     const body = this.body;
@@ -411,7 +416,12 @@ export class OriginalSimulation {
       this.screen = nextScreen;
     }
     const adventure = this.adventure?.tick(this.getState()) || [];
-    return { bumped: !!bumped, adventure };
+    const effects: OriginalMovementEffect[] = [];
+    if (this.jumps > jumps) effects.push('jump');
+    if (this.falls > falls) effects.push('splat');
+    else if (!grounded && body.isGrounded) effects.push('land');
+    if (bumped) effects.push('bump');
+    return { bumped: !!bumped, adventure, effects };
   }
 
   getState(): OriginalState {

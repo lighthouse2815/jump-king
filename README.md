@@ -6,6 +6,11 @@ Chơi đơn có lưu/tiếp tục trong trình duyệt, tạm dừng, điều kh
 
 Community Tower và Race Arena chạy Colyseus với dự đoán và đối chiếu trạng thái phía client. Server kiểm tra quyền sở hữu khi trang bị, tự xử lý nhặt vật phẩm và giao dịch. Chơi đơn giữ kho đồ qua các chiến dịch và lần chơi mới; phòng online có kho đồ riêng trong phiên chơi.
 
+Nhân vật online khác dùng cùng hoạt họa đi bộ, tích lực, nhảy, rơi và va chạm với nhân vật của mình.
+Tiếng nhảy, tiếp đất, ngã và va chạm của người khác theo sự kiện từ server, chỉ nghe khi cùng màn,
+nhỏ hơn tiếng của mình và tuân theo lựa chọn tắt âm thanh. Chọn tiếng nước/tuyết/băng theo nền của
+người phát tiếng. Cần cập nhật cả frontend và backend để bật đồng bộ âm thanh này.
+
 ## Chạy bản đã build
 
 ```sh
@@ -87,6 +92,12 @@ Khi quyền lưu dữ liệu bị chặn hoặc bộ nhớ đầy, game vẫn m�
 tiến trình không được lưu qua lần đóng/tải lại trang khi không ghi được save.
 Âm thanh giải mã cho Phaser dùng URL riêng để tránh dùng lại phản hồi HTTP 206
 được lưu trong bộ nhớ đệm khi menu phát cùng file bằng HTML Audio.
+
+Kiểm tra hoạt họa và âm thanh của người chơi khác bằng hai phiên trình duyệt và server thật:
+
+```sh
+E2E_CROSS_BROWSER=1 pnpm exec playwright test e2e/peer-presentation.spec.ts
+```
 
 Kiểm tra multiplayer trực tiếp trên bản công khai, không khởi động server cục bộ:
 

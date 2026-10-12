@@ -148,7 +148,16 @@ export class OriginalRoom extends Room<OriginalTowerState> {
         Date.now() - (this.receivedAt.get(sessionId) ?? 0) < 500
           ? this.lastInputs.get(sessionId) || idle
           : idle;
-      simulation.tick(running ? input : idle);
+      const event = simulation.tick(running ? input : idle);
+      if (event.effects.length)
+        this.broadcast('playerEffects', {
+          sessionId,
+          effects: event.effects,
+          screen: simulation.screen,
+          water: simulation.inWater,
+          snow: simulation.onSnow,
+          ice: simulation.onIce,
+        });
       const finished =
         running &&
         isOriginalFinish(

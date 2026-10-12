@@ -54,18 +54,29 @@ describe('Jump King 1.04 physics', () => {
     simulation.body.position.set(452, 120);
     simulation.body.velocity.set(3.5, -4);
     simulation.body.isGrounded = false;
-    simulation.tick(idle);
+    expect(simulation.tick(idle).effects).toContain('bump');
     expect(simulation.body.velocity.x).toBe(-1.75);
     expect(simulation.knocked).toBe(true);
     expect(simulation.body.position.x + 18).toBeLessThanOrEqual(472);
+  });
+
+  it('emits one jump and landing effect, without replaying sounds on idle ticks', () => {
+    const simulation = grounded();
+    for (let i = 0; i < 17; i++)
+      expect(simulation.tick({ ...idle, jump: true }).effects).toEqual([]);
+    const effects = [...simulation.tick(idle).effects];
+    for (let i = 0; i < 90; i++) effects.push(...simulation.tick(idle).effects);
+    expect(effects).toEqual(['jump', 'land']);
   });
 
   it('caps fall speed and applies a half-second splat after a long fall', () => {
     const simulation = new OriginalSimulation(ORIGINAL_SCREENS, 240, 100);
     simulation.body.isGrounded = false;
     simulation.body.velocity.y = 10;
+    const effects: string[] = [];
     for (let i = 0; i < 40 && simulation.falls === 0; i++)
-      simulation.tick(idle);
+      effects.push(...simulation.tick(idle).effects);
+    expect(effects).toEqual(['splat']);
     expect(simulation.falls).toBe(1);
     expect(simulation.splatTicks).toBeGreaterThan(0);
     simulation.tick({ ...idle, right: true });

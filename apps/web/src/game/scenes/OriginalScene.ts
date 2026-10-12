@@ -11,6 +11,7 @@ import {
   OriginalAutoplayTour,
   ORIGINAL_PHYSICS,
   OriginalState,
+  OriginalMovementEffect,
   PlayerInput,
   OriginalWorldEvents,
   OriginalWorldEvent,
@@ -474,6 +475,28 @@ export class OriginalScene extends Phaser.Scene {
     }
     this.room = room;
     this.appliedSnapshots.clear();
+    room.onMessage(
+      'playerEffects',
+      (message: {
+        sessionId: string;
+        effects: OriginalMovementEffect[];
+        screen: number;
+        water: boolean;
+        snow: boolean;
+        ice: boolean;
+      }) => {
+        if (
+          this.disposed ||
+          !this.ready ||
+          this.options.muted ||
+          message.sessionId === room.sessionId ||
+          message.screen !== this.simulation.screen
+        )
+          return;
+        for (const effect of message.effects)
+          this.playEffect(effect, message, 0.45);
+      },
+    );
     room.onLeave(() => {
       if (!this.disposed) this.fail('Đã mất kết nối tới phòng chơi.');
     });
@@ -909,9 +932,6 @@ export class OriginalScene extends Phaser.Scene {
     while (this.accumulator >= 1 / 60) {
       this.accumulator -= 1 / 60;
       const sim = this.simulation;
-      const jumps = sim.jumps,
-        falls = sim.falls,
-        grounded = sim.body.isGrounded;
       const rawInput = {
         left:
           this.keys.LEFT.isDown ||
@@ -973,10 +993,7 @@ export class OriginalScene extends Phaser.Scene {
         this.applyWorldEvent(worldEvent);
       this.effects?.tick();
       this.recordAchievements(false);
-      if (sim.jumps > jumps) this.playEffect('jump');
-      if (sim.falls > falls) this.playEffect('splat');
-      else if (!grounded && sim.body.isGrounded) this.playEffect('land');
-      if (event.bumped) this.playEffect('bump');
+      for (const effect of event.effects) this.playEffect(effect);
       this.best = Math.max(this.best, sim.screen);
       if (
         !this.room &&
@@ -1111,18 +1128,25 @@ export class OriginalScene extends Phaser.Scene {
     }
   }
 
-  private playEffect(effect: 'jump' | 'land' | 'splat' | 'bump') {
-    const sim = this.simulation;
-    const variant = sim.inWater
+  private playEffect(
+    effect: OriginalMovementEffect,
+    terrain = {
+      water: this.simulation.inWater,
+      snow: this.simulation.onSnow,
+      ice: this.simulation.onIce,
+    },
+    volume = 0.65,
+  ) {
+    const variant = terrain.water
       ? `water/water_${effect}`
-      : sim.onSnow && effect !== 'bump'
+      : terrain.snow && effect !== 'bump'
         ? `snow/king_${effect}`
-        : sim.onIce && (effect === 'jump' || effect === 'land')
+        : terrain.ice && (effect === 'jump' || effect === 'land')
           ? `ice/king_${effect}`
           : `king_${effect}`;
     const key = `audio/jump_king/${variant}`;
     if (this.cache.audio.exists(key) && !this.sound.locked)
-      this.sound.play(key, { volume: 0.65 });
+      this.sound.play(key, { volume });
   }
 
   private async showEnding(resume = false, equipped?: string[]) {
