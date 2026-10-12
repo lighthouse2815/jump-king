@@ -324,9 +324,12 @@ for (let s = 0; s < 169; s++) {
         ?.name.replace("LOCATION_", "")
         .replaceAll("_", " ") || "",
     ambience: ambience[s] || [],
-    weather: weathers.filter((weather) =>
-      array(weather.screens?.int).includes(s + 1),
-    ),
+    weather: weathers
+      .filter((weather) => array(weather.screens?.int).includes(s + 1))
+      .map((weather) => {
+        const mask = `screens/masks/${weather.name}mask${s + 1}`;
+        return { ...weather, mask: textures[mask] ? mask : null };
+      }),
     scrolling: fs.existsSync(path.join(source, scrollingFile))
       ? readXml(scrollingFile)
       : null,

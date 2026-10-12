@@ -57,13 +57,11 @@ test("reads the original diary with bitmap glyphs and removes it after leaving",
           }
         : null;
     });
-  await expect
-    .poll(rendered)
-    .toMatchObject({
-      visible: true,
-      type: "BitmapText",
-      font: "font/sf_pixolde",
-    });
+  await expect.poll(rendered).toMatchObject({
+    visible: true,
+    type: "BitmapText",
+    font: "font/sf_pixolde",
+  });
   await expect
     .poll(async () => (await rendered())?.text.replaceAll("\n", " "), {
       timeout: 10000,
@@ -99,21 +97,42 @@ test("reads world text from authoritative online snapshots", async ({
   };
   await toggleFlight();
   await expect(state).toHaveAttribute("data-free-flight", "true");
-  await page.keyboard.down("ArrowRight");
-  await expect
-    .poll(async () => Number(await state.getAttribute("data-x")), {
-      intervals: [20],
-    })
-    .toBeGreaterThanOrEqual(298);
-  await page.keyboard.up("ArrowRight");
-  await page.keyboard.down("ArrowUp");
-  await expect
-    .poll(async () => Number(await state.getAttribute("data-y")), {
-      timeout: 20000,
-      intervals: [20],
-    })
-    .toBeLessThanOrEqual(260 - 6 * 360);
-  await page.keyboard.up("ArrowUp");
+  // Drive the real touch input and release it within the browser, avoiding a
+  // round trip through the HUD (which refreshes only every 100 milliseconds).
+  await page.evaluate(async () => {
+    const scene = (window as any).Phaser.Display.Canvas.CanvasPool.pool
+      .map((entry: any) => entry.parent?.scene)
+      .find((scene: any) => scene?.sys?.settings?.key === "OriginalScene");
+    const move = (control: string, axis: "x" | "y", target: number) =>
+      new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          scene.setControl(control, false);
+          remove();
+          reject(new Error(`Did not reach ${axis}=${target}`));
+        }, 20000);
+        const remove = () => scene.room.onStateChange.remove(onState);
+        const onState = () => {
+          const state = JSON.parse(
+            scene.room.state.players.get(scene.room.sessionId).snapshot,
+          );
+          if (axis === "x" ? state.x >= target : state.y <= target) {
+            scene.setControl(control, false);
+            // Screen asset loading can suspend client update while the server
+            // keeps simulating its last input. Send a real idle packet now.
+            scene.room.send("input", {
+              seq: scene.sequence++, left: false, right: false, jump: false,
+            });
+            clearTimeout(timer);
+            remove();
+            resolve();
+          }
+        };
+        scene.room.onStateChange(onState);
+        scene.setControl(control, true);
+      });
+    await move("right", "x", 304);
+    await move("up", "y", 260 - 6 * 360);
+  });
   await toggleFlight();
   await expect(state).toHaveAttribute("data-free-flight", "false");
   const view = () =>

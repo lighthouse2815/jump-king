@@ -11,7 +11,7 @@ Mục tiêu: giữ các font gốc, nhập nội dung bảng/sách/nhật ký v�
 
 ## 2. Hiển thị nội dung đọc và font gốc
 
-- Đối chiếu RattmanEntity trong executable: thời gian đứng yên, điều kiện vùng kích hoạt, chuyển dòng và dừng khi di chuyển.
+- Đối chiếu RattmanEntity trong executable: thời gian không nhấn hướng/nhảy, điều kiện vùng kích hoạt, chuyển dòng và dừng khi rời vùng. Sau khi bắt đầu, di chuyển trong vùng không dừng đọc.
 - Thêm kiểm thử hành vi thất bại trước; mở rộng mô phỏng chung và snapshot tương thích save cũ.
 - Dùng BitmapText của Phaser để hiển thị font gốc, bubble, NPC và chữ cắt cảnh; dọn khi đổi màn/rời scene.
 - Kiểm tra unit, trình duyệt chơi đơn/online, build; commit và push riêng.
@@ -23,4 +23,11 @@ Mục tiêu: giữ các font gốc, nhập nội dung bảng/sách/nhật ký v�
 - Cập nhật README về tài nguyên, nội dung được bổ sung và giới hạn kiểm tra.
 - Chạy toàn bộ unit, build và E2E liên quan khi thư mục bộ cài không tồn tại; kiểm tra diff, commit, push.
 
-Không tuyên bố tương đương 100% toàn bộ game hoặc nhập file test nếu executable không sử dụng nó. Hai shader XNB là định dạng engine gốc; ghi lại cách tái hiện và giữ bản nguồn để tham khảo, không tải chúng như shader web.
+Không tuyên bố tương đương 100% toàn bộ game hoặc nhập file test nếu executable không sử dụng nó. Với effect XNB của engine gốc, ghi lại cách tái hiện và giữ bản nguồn để tham khảo, không tải bytecode đó như shader web.
+
+## Kết quả đối chiếu nguồn
+
+- `PropManager` tạo `RattmanEntity` từ cả 23 XML, kể cả `screen1_test_message`; vì vậy giữ nội dung này ở vị trí gốc.
+- `test_mask.xnb` là Texture2D, không phải shader thứ hai; đã chuyển PNG. `Mask.xnb` là effect duy nhất cần giữ bytecode để tham khảo.
+- `SayLine` hiện ký tự mỗi 0,05 giây; `SpeechBubbleFormat` dùng font Pixolde/Double Homicide và các dòng cách nhau 12 pixel. Dữ liệu ngôn ngữ đầy đủ giữ khoảng trắng gốc.
+- Bytecode shader nhân RGBA của thời tiết theo alpha mask, không đảo mask. Tên mask gồm tên thời tiết và số màn; mask một pixel phủ cả khung.

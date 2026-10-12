@@ -1,10 +1,14 @@
 # Jump King Web
 
-Bản chơi web sử dụng dữ liệu từ bộ Jump King 1.04 được cung cấp trong workspace: 169 màn, 778 texture, 125 âm thanh, 32 NPC (gồm 5 thương nhân), 28 vật phẩm trên bản đồ, 4 nhiệm vụ đuổi chim và tường ẩn của 37 màn. Bản chính có đường chơi qua đủ 43 màn, được kiểm tra bằng mô phỏng thực tế từ điểm xuất phát đến điều kiện thắng.
+Bản chơi web sử dụng dữ liệu từ bộ Jump King 1.04 được cung cấp trong workspace: 169 màn, 779 texture (gồm texture test mask), 125 âm thanh, 9 font TTF, 8 bitmap font, 32 NPC (gồm 5 thương nhân), 28 vật phẩm trên bản đồ, 4 nhiệm vụ đuổi chim và tường ẩn của 37 màn. Bản chính có đường chơi qua đủ 43 màn, được kiểm tra bằng mô phỏng thực tế từ điểm xuất phát đến điều kiện thắng.
 
 Chơi đơn có lưu/tiếp tục trong trình duyệt, tạm dừng, điều khiển bàn phím/tay cầm/cảm ứng, thời tiết và nhạc nền. Vật phẩm, tiền, trang bị, hội thoại, giao dịch và nhiệm vụ chim dùng chung mô phỏng với server. Giant Boots ngăn đi bộ; Snake Ring làm sàn trơn. Mở đầu, cắt cảnh và ảnh kết thúc của cả ba chiến dịch dùng asset gốc, có bỏ qua; phần thưởng vẫn được trao khi bỏ qua. Bộ 48 thành tích gốc lưu trên trình duyệt. Sự kiện DLC gồm tường ẩn và âm thanh riêng, sét, gargoyle, nhạc theo vùng và đạo cụ lối vào.
 
 Community Tower và Race Arena chạy Colyseus với dự đoán và đối chiếu trạng thái phía client. Server kiểm tra quyền sở hữu khi trang bị, tự xử lý nhặt vật phẩm và giao dịch. Chơi đơn giữ kho đồ qua các chiến dịch và lần chơi mới; phòng online có kho đồ riêng trong phiên chơi.
+
+Nội dung bảng, sách, nhật ký và ký tự cổ được nhập từ cả 23 cấu hình `RattmanSettings` mà executable gốc tải. Trong vùng đọc, không nhấn trái/phải hoặc nhảy trong 0,5 giây để bắt đầu; chữ hiện mỗi 0,05 giây, giữ từng dòng 2,2 giây. Rời vùng đọc sẽ dừng và cho phép đọc lại. Đang đọc có thể di chuyển trong vùng; không cần nhấn nút tương tác. Nội dung dùng bitmap font Pixolde gốc; NPC gargoyle dùng Double Homicide, mở đầu/credit dùng Litter Lover. Chơi đơn lưu trạng thái đọc; online nhận trạng thái từ server và cần cập nhật cả frontend/backend.
+
+Thời tiết chọn đúng mask theo tên hiệu ứng và số màn: 35 liên kết mask, trong đó 5 mask một pixel được phóng đủ 480×360. Phaser BitmapMask nhân alpha như effect `Mask` gốc; màn không có mask vẫn vẽ toàn bộ thời tiết. Texture thời tiết dịch ngang theo cùng hàm gió với mô phỏng vật lý.
 
 Chat trong phòng hiện ở góc dưới trái khi có tin mới, tự mờ sau 6 giây và hiện lại khi rê chuột vào hoặc chạm nút **Chat**. Nhấn **Enter** để nhập/gửi, **Escape** để trở lại điều khiển nhân vật. Khi nhập chat, phím điều khiển nhân vật được tắt; phòng vẫn tiếp tục chạy. Mỗi tin tối đa 200 ký tự, cách nhau ít nhất 1 giây. Server giữ 50 tin gần nhất trong bộ nhớ của từng phòng để người mới vào xem lại; lịch sử mất khi phòng đóng hoặc server khởi động lại, không ghi database. Cần cập nhật cả frontend và backend để dùng chat.
 
@@ -113,17 +117,29 @@ Playwright tự khởi động server nếu chưa chạy. Test bao gồm chơi �
 
 Các asset đã chuyển đổi được commit trong repository; không cần bộ cài Windows để chạy web. Bộ cài gốc được bỏ qua bởi Git.
 
+Toàn bộ 1.422 chuỗi tiếng Anh nằm trong `apps/web/public/original/language/en-US.json`. Font XNB đã xuất thành atlas PNG/BMFont XML, có đủ glyph và số đo gốc. Bytecode effect MonoGame được giữ tại `scripts/original-reference/Mask.xnb` để đối chiếu; trình duyệt dùng API mask của Phaser. Không cần DLL/executable Windows để tiếp tục phát triển các phần này.
+
 ```sh
 pnpm import:original
 ```
 
 Lệnh này dùng `xnb`, `pngjs`, `fast-xml-parser` và FFmpeg. Có thể truyền đường dẫn Content khác: `pnpm import:original /path/to/Content`.
 
+Khi chỉ bổ sung dữ liệu và giữ những file âm thanh đã chuyển, dùng `pnpm import:original /path/to/Content --missing-only` để tránh mã hóa lại âm thanh.
+
 Để nhập lại lời thoại tiếng Anh, dùng ILSpy xuất `en-US/LanguageJK.resources.dll` thành `.resx`, rồi chạy:
 
 ```sh
 node scripts/import-original-details.cjs /path/to/LanguageJK.language.en-US.resx
 ```
+
+Có thể dùng JSON tiếng Anh đã lưu, không cần xuất lại DLL:
+
+```sh
+pnpm import:details apps/web/public/original/language/en-US.json /path/to/Content
+```
+
+Các lệnh **nhập lại** vẫn cần dữ liệu Content nguồn. Build, chạy game, chỉnh map/logic/nội dung đã nhập và chạy test dùng dữ liệu trong Git, không cần thư mục `Jump.King.v1.04`.
 
 ## Mức độ tương đương bản gốc
 

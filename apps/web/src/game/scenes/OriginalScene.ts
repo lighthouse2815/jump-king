@@ -146,6 +146,8 @@ export class OriginalScene extends Phaser.Scene {
     sprite: Phaser.GameObjects.TileSprite;
     speed: number;
   }[] = [];
+  private weather: { sprite: Phaser.GameObjects.TileSprite; textureWidth: number }[] = [];
+  private weatherWind = 0;
   private ambience: HTMLAudioElement[] = [];
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private touch = { left: false, right: false, jump: false, up: false, down: false };
@@ -710,9 +712,8 @@ export class OriginalScene extends Phaser.Scene {
         ...Object.keys(this.manifest.textures).filter((key) =>
           key.startsWith(`particles/${weather.name}/`),
         ),
+        ...(weather.mask ? [weather.mask] : []),
       );
-    const mask = `screens/masks/${screen + 1}`;
-    if (this.manifest.textures[mask]) textures.push(mask);
     const sounds = data.ambience
       .map((sound) => this.ambienceKey(sound.name))
       .filter((key): key is string => !!key);
@@ -768,6 +769,7 @@ export class OriginalScene extends Phaser.Scene {
     for (const visual of this.visuals) visual.destroy();
     this.visuals = [];
     this.scrolling = [];
+    this.weather = [];
     this.npcs = [];
     this.walls = [];
     this.stopAmbience();
@@ -850,12 +852,19 @@ export class OriginalScene extends Phaser.Scene {
         .tileSprite(0, top, 480, 360, keys[0])
         .setOrigin(0)
         .setDepth(weather.foreground ? 22 : 7);
-      const maskKey = `screens/masks/${screen + 1}`;
-      if (this.textures.exists(maskKey)) {
+      const frame = this.manifest.textures[keys[0]];
+      weatherSprite.setTileScale(
+        480 / (Math.trunc(480 / frame.width) * frame.width),
+        360 / (Math.trunc(360 / frame.height) * frame.height),
+      );
+      this.weather.push({ sprite: weatherSprite, textureWidth: frame.width });
+      if (weather.mask) {
         const maskImage = this.make
-          .image({ x: 0, y: top, key: maskKey, add: false })
-          .setOrigin(0);
+          .image({ x: 0, y: top, key: weather.mask, add: false })
+          .setOrigin(0)
+          .setDisplaySize(480, 360);
         weatherSprite.setMask(maskImage.createBitmapMask());
+        weatherSprite.once('destroy', () => weatherSprite.clearMask(true));
         this.visuals.push(maskImage);
       }
       const timer = this.time.addEvent({
@@ -1045,6 +1054,9 @@ export class OriginalScene extends Phaser.Scene {
         }
       }
       const event = sim.tick(input);
+      this.weatherWind = ORIGINAL_SCREENS[sim.screen].wind
+        ? this.weatherWind - sim.windVelocity * 2 / 3
+        : 0;
       try {
         this.tour?.afterTick(sim);
       } catch (error) {
@@ -1104,6 +1116,8 @@ export class OriginalScene extends Phaser.Scene {
     }
     for (const layer of this.scrolling)
       layer.sprite.tilePositionX += (layer.speed * delta) / 1000;
+    for (const weather of this.weather)
+      weather.sprite.tilePositionX = this.weatherWind * weather.textureWidth;
     this.updateDetails(delta * this.autoplaySpeed);
     this.renderPlayer();
     if (this.time.now - this.uiAt >= 100) {

@@ -70,6 +70,27 @@ test("retains complete English text and every original readable message", () => 
   }
 });
 
+test("maps weather to per-effect masks and leaves unmasked weather visible", () => {
+  assert.equal(
+    manifest.screens[8].weather[0].mask,
+    "screens/masks/light_rainmask9",
+  );
+  assert.equal(
+    manifest.screens[26].weather[0].mask,
+    "screens/masks/snowmask27",
+  );
+  assert.equal(manifest.screens[22].weather[0].mask, null);
+  let masks = 0;
+  for (const [index, screen] of manifest.screens.entries()) {
+    for (const weather of screen.weather) {
+      const key = `screens/masks/${weather.name}mask${index + 1}`;
+      assert.equal(weather.mask, manifest.textures[key] ? key : null);
+      if (weather.mask) masks++;
+    }
+  }
+  assert.equal(masks, 35);
+});
+
 test("converts the test mask texture and preserves the engine shader for reference", () => {
   const mask = manifest.textures["shaders/test_mask"];
   assert.ok(mask);

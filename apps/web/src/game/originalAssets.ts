@@ -18,7 +18,7 @@ export interface OriginalVisualScreen {
   props: OriginalProp[];
   location: string;
   ambience: { name: string; volume: number }[];
-  weather: { name: string; fps: number; foreground?: boolean }[];
+  weather: { name: string; fps: number; foreground?: boolean; mask: string | null }[];
   scrolling: {
     ScrollingBGdata?: {
       scroll_speed: number;

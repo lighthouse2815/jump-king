@@ -116,6 +116,12 @@ export class OriginalSimulation {
     return clamp(-Math.floor(y / 360), 0, this.screens.length - 1);
   }
 
+  get windVelocity() {
+    if (!this.screens[this.screen].wind) return 0;
+    const phase = (this.elapsedTicks / 60) * 0.48124886;
+    return clamp(Math.sin(phase) * 2 + (Math.cos(phase) > 0 ? 1 : -1), -1, 1) * 0.1;
+  }
+
   private contact(): Contact {
     const x = Math.trunc(this.body.position.x),
       y = Math.trunc(this.body.position.y);
@@ -209,11 +215,7 @@ export class OriginalSimulation {
     if (!this.screens[this.screen].wind) this.windEnabled = false;
     else if (body.isGrounded) this.windEnabled = true;
     if (info.wind && this.windEnabled && !this.onSnow) {
-      const phase = (this.elapsedTicks / 60) * 0.48124886;
-      const wind =
-        clamp(Math.sin(phase) * 2 + (Math.cos(phase) > 0 ? 1 : -1), -1, 1) *
-        0.1;
-      body.velocity.x = f(body.velocity.x + wind);
+      body.velocity.x = f(body.velocity.x + this.windVelocity);
     }
     const vx = body.velocity.x,
       vy = body.velocity.y;
