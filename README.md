@@ -77,11 +77,16 @@ cài các trình duyệt rồi bật bộ test nhiều trình duyệt:
 
 ```sh
 pnpm exec playwright install chromium firefox msedge
-E2E_CROSS_BROWSER=1 pnpm exec playwright test e2e/browser-compat.spec.ts e2e/original.spec.ts --grep 'gamepad access|plays without|a race starts'
+E2E_CROSS_BROWSER=1 pnpm exec playwright test e2e/browser-compat.spec.ts e2e/audio-loading.spec.ts e2e/original.spec.ts --grep 'gamepad access|storage|menu has streamed|plays without|a race starts'
 ```
 
-Edge/Firefox với cấu hình mặc định có thể chạy chơi đơn và Community trên bản công khai.
+Ngày 12/10/2026, Edge 155 và Firefox 157 trên Linux với cấu hình mặc định
+đã mở được chơi đơn và Community trên bản công khai.
 Khi trình duyệt chặn API tay cầm, game vẫn nhận bàn phím và cảm ứng.
+Khi quyền lưu dữ liệu bị chặn hoặc bộ nhớ đầy, game vẫn mở và báo lỗi lưu;
+tiến trình không được lưu qua lần đóng/tải lại trang khi không ghi được save.
+Âm thanh giải mã cho Phaser dùng URL riêng để tránh dùng lại phản hồi HTTP 206
+được lưu trong bộ nhớ đệm khi menu phát cùng file bằng HTML Audio.
 
 Kiểm tra multiplayer trực tiếp trên bản công khai, không khởi động server cục bộ:
 

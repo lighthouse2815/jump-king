@@ -1,4 +1,5 @@
 import * as Colyseus from 'colyseus.js';
+import { readStoredValue, writeStoredValue } from '../utils/browserStorage';
 import {
   GameState,
   PlayerInputMessage,
@@ -14,6 +15,7 @@ export class NetworkManager {
   public room: Colyseus.Room<GameState> | null = null;
   public sessionId: string = '';
   public originalRoom: Colyseus.Room<OriginalTowerState> | null = null;
+  private userId = '';
 
   constructor() {
     let endpoint = import.meta.env.VITE_SERVER_URL;
@@ -32,11 +34,13 @@ export class NetworkManager {
   }
 
   private getUserId() {
-    let userId = localStorage.getItem('userId');
+    if (this.userId) return this.userId;
+    let userId = readStoredValue('userId');
     if (!userId) {
       userId = crypto.randomUUID();
-      localStorage.setItem('userId', userId);
+      writeStoredValue('userId', userId);
     }
+    this.userId = userId;
     return userId;
   }
 

@@ -7,6 +7,11 @@ import { originalUrl } from '../game/originalAssets';
 import { OriginalMenu, MenuItem } from '../components/OriginalMenu';
 import { multiplayerEnabled } from '../game/networking/NetworkManager';
 import { readGamepads } from '../game/utils/gamepads';
+import {
+  readStoredValue,
+  writeStoredValue,
+  storageWarning,
+} from '../game/utils/browserStorage';
 
 type Panel =
   | 'main'
@@ -55,17 +60,17 @@ export const LandingPage = () => {
     Partial<Record<keyof typeof soundFiles, HTMLAudioElement>>
   >({});
   const [started, setStarted] = useState(
-    () => sessionStorage.getItem('jumpking.title.started') === 'true',
+    () => readStoredValue('jumpking.title.started', 'sessionStorage') === 'true',
   );
   const [panels, setPanels] = useState<Panel[]>(['main']);
   const [campaign, setCampaign] = useState<CampaignId>(() => {
-    const saved = localStorage.getItem('jumpking.campaign');
+    const saved = readStoredValue('jumpking.campaign');
     return saved && Object.prototype.hasOwnProperty.call(CAMPAIGNS, saved)
       ? (saved as CampaignId)
       : 'original';
   });
   const [muted, setMuted] = useState(
-    () => localStorage.getItem('jumpking.muted') === 'true',
+    () => readStoredValue('jumpking.muted') === 'true',
   );
   const [notice, setNotice] = useState('');
   const save = readSave(campaign);
@@ -96,7 +101,7 @@ export const LandingPage = () => {
       originalUrl('audio/music/menu loop/menu_intro.ogg'),
     );
     audio.volume = 0.5;
-    audio.muted = localStorage.getItem('jumpking.muted') === 'true';
+    audio.muted = readStoredValue('jumpking.muted') === 'true';
     audio.onended = () => {
       audio.src = originalUrl('audio/music/menu loop/menu_loop.ogg');
       audio.loop = true;
@@ -121,7 +126,8 @@ export const LandingPage = () => {
     };
   }, []);
   useEffect(() => {
-    localStorage.setItem('jumpking.muted', String(muted));
+    if (!writeStoredValue('jumpking.muted', String(muted)))
+      setNotice(storageWarning);
     if (music.current) music.current.muted = muted;
     for (const audio of Object.values(sounds.current))
       if (audio) audio.muted = muted;
@@ -138,7 +144,8 @@ export const LandingPage = () => {
   };
   const enterMenu = () => {
     sound('start');
-    sessionStorage.setItem('jumpking.title.started', 'true');
+    if (!writeStoredValue('jumpking.title.started', 'true', 'sessionStorage'))
+      setNotice(storageWarning);
     setStarted(true);
   };
   useEffect(() => {
@@ -201,8 +208,8 @@ export const LandingPage = () => {
   };
   const play = (id: CampaignId, fresh: boolean) => {
     sound('confirm');
-    localStorage.setItem('jumpking.campaign', id);
-    if (fresh) localStorage.removeItem(saveKey(id));
+    writeStoredValue('jumpking.campaign', id);
+    if (fresh) writeStoredValue(saveKey(id), null);
     navigate(`/play?campaign=${id}${fresh ? '&new=1' : ''}`);
   };
   const newGame = (id: CampaignId) => {
@@ -280,7 +287,7 @@ export const LandingPage = () => {
         label: 'Return to title',
         action: () => {
           sound('confirm');
-          sessionStorage.removeItem('jumpking.title.started');
+          writeStoredValue('jumpking.title.started', null, 'sessionStorage');
           setStarted(false);
           setPanels(['main']);
         },

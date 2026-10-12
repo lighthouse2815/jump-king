@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Phaser from 'phaser';
 import { OriginalMenu, MenuItem } from '../components/OriginalMenu';
+import {
+  readStoredValue,
+  writeStoredValue,
+  storageWarning,
+} from '../game/utils/browserStorage';
 import { CAMPAIGNS, CampaignId } from '@jump-king/maps';
 import {
   OriginalScene,
@@ -89,14 +94,14 @@ export function OriginalGamePage({
   const [generation, setGeneration] = useState(0);
   const fresh = useRef(false);
   const [muted, setMuted] = useState(
-    () => localStorage.getItem('jumpking.muted') === 'true',
+    () => readStoredValue('jumpking.muted') === 'true',
   );
   const [notice, setNotice] = useState('');
   const [menus, setMenus] = useState<PausePanel[]>(['pause']);
   const [selectedItem, setSelectedItem] = useState('');
   const [developerOpen, setDeveloperOpen] = useState(false);
   const [showTimer, setShowTimer] = useState(
-    () => localStorage.getItem('jumpking.timer') === 'true',
+    () => readStoredValue('jumpking.timer') === 'true',
   );
   const [cheat, setCheat] = useState('');
   const [cheatError, setCheatError] = useState('');
@@ -216,7 +221,8 @@ export function OriginalGamePage({
 
   useEffect(() => {
     scene.current?.setMuted(muted);
-    localStorage.setItem('jumpking.muted', String(muted));
+    if (!writeStoredValue('jumpking.muted', String(muted)))
+      setNotice(storageWarning);
   }, [muted]);
   const resume = () => {
     setMenus(['pause']);
@@ -232,7 +238,7 @@ export function OriginalGamePage({
   const exit = () => {
     scene.current?.persist();
     if (!autoplay)
-      localStorage.setItem('jumpking.campaign', campaign);
+      writeStoredValue('jumpking.campaign', campaign);
     navigate('/');
   };
   const open = (panel: PausePanel) => {
@@ -250,7 +256,8 @@ export function OriginalGamePage({
     }
   }, [ui.paused]);
   useEffect(() => {
-    localStorage.setItem('jumpking.timer', String(showTimer));
+    if (!writeStoredValue('jumpking.timer', String(showTimer)))
+      setNotice(storageWarning);
   }, [showTimer]);
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) => {
