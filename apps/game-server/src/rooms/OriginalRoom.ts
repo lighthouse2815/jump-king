@@ -55,16 +55,17 @@ export class OriginalRoom extends Room<OriginalTowerState> {
       const simulation = this.simulations.get(client.sessionId);
       if (!player || !simulation || player.finished) return;
       if (typeof code !== 'string' || code.length > 32) {
-        client.send('cheatError', 'Mã cheat không hợp lệ. Dùng FLY hoặc NORMAL.');
+        client.send('cheatError', 'Mã cheat không hợp lệ.');
         return;
       }
       const normalized = code.trim().toUpperCase();
-      if (normalized !== 'FLY' && normalized !== 'NORMAL') {
-        client.send('cheatError', 'Mã cheat không hợp lệ. Dùng FLY hoặc NORMAL.');
+      const configuredCode = process.env.ONLINE_CHEAT_CODE?.trim().toUpperCase();
+      if (!configuredCode || normalized !== configuredCode) {
+        client.send('cheatError', 'Mã cheat không hợp lệ.');
         return;
       }
-      if (!simulation.setFreeFlight(normalized === 'FLY')) {
-        client.send('cheatError', 'Hãy bay ra khỏi địa hình trước khi dùng NORMAL.');
+      if (!simulation.setFreeFlight(!simulation.freeFlight)) {
+        client.send('cheatError', 'Hãy bay ra khỏi địa hình trước khi tắt bay.');
         return;
       }
       this.queues.get(client.sessionId)!.length = 0;

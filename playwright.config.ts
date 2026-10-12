@@ -1,4 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import { randomBytes } from 'node:crypto';
+
+// Each local run uses a temporary code; production credentials stay outside Git.
+if (!process.env.E2E_BASE_URL)
+  process.env.E2E_CHEAT_CODE ||= randomBytes(12).toString('hex');
 
 export default defineConfig({
   testDir: './e2e',
@@ -16,6 +21,7 @@ export default defineConfig({
     : [
         {
           command: 'pnpm build && pnpm start',
+          env: { ONLINE_CHEAT_CODE: process.env.E2E_CHEAT_CODE || '' },
           url: 'http://localhost:2567/health',
           reuseExistingServer: !process.env.CI,
           timeout: 120000,

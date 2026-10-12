@@ -164,7 +164,7 @@ Worker secret `ORIGIN_TOKEN` phải khớp `.origin-token` trên EC2. Khi xoay t
 ## Deploy tự động bằng GitHub Actions
 
 Workflow [Deploy production](../.github/workflows/deploy.yml) chạy khi push lên `main`
-hoặc chạy thủ công trên nhánh `main`. GitHub build, chạy test workspace và test chat bằng
+hoặc chạy thủ công trên nhánh `main`. GitHub build, chạy test workspace, chat và cheat bằng
 Chromium/server thật, rồi tạo hai artifact. Job backend chạy trên runner EC2 có label
 `jump-king-production`, sao lưu runtime, cập nhật và kiểm tra health; nếu lỗi, script
 [apply-backend.sh](ec2/apply-backend.sh) khôi phục gói cũ. Sau khi backend thành công,
@@ -176,3 +176,16 @@ với repository này và chạy bằng systemd dưới user `ubuntu`; chỉ nh�
 phần build/test chạy trên runner GitHub. Không cần khóa SSH trong GitHub Secrets.
 Theo dõi kết quả tại https://github.com/lighthouse2815/jump-king/actions.
 Timer dừng EC2 trước hạn Free plan vẫn áp dụng; khi EC2 dừng, job backend không chạy được.
+
+## Mã bay online riêng
+
+Trong Community/Race, mở **Esc hoặc Menu → Code** để nhập mã. Ô nhập được che ký tự;
+giao diện và lỗi không tiết lộ mã. Nhập đúng mã lần nữa để tắt bay khi đã ra khỏi địa hình.
+Backend kiểm tra biến môi trường `ONLINE_CHEAT_CODE`; nếu chưa cấu hình thì không cho bật bay.
+Mã cũ `FLY`/`NORMAL` không còn hiệu lực.
+
+Production đọc mã từ `/home/ubuntu/jump-king-deploy/online-cheat.env` (quyền `0600`),
+qua systemd drop-in `jump-king.service.d/online-cheat.conf`. File này nằm ngoài runtime
+được cập nhật nên deploy tự động vẫn giữ mã; không đưa mã vào Git hoặc frontend.
+Playwright tự tạo mã tạm cho server local. Kiểm tra production cần truyền mã qua
+`E2E_CHEAT_CODE`, không ghi mã vào dòng lệnh hoặc báo cáo test.

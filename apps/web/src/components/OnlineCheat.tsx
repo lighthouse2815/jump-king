@@ -6,12 +6,14 @@ export function OnlineCheat({
   error,
   onSend,
   onFocus,
+  onClose,
 }: {
   enabled: boolean;
   connected: boolean;
   error: string;
   onSend: (code: string) => void;
   onFocus: (focused: boolean) => void;
+  onClose: () => void;
 }) {
   const [code, setCode] = useState('');
   const form = useRef<HTMLFormElement>(null);
@@ -40,9 +42,9 @@ export function OnlineCheat({
       }}
       onKeyDown={(event) => {
         event.stopPropagation();
-        if (event.key === 'Escape' && event.target instanceof HTMLElement) {
+        if (event.key === 'Escape') {
           event.preventDefault();
-          event.target.blur();
+          onClose();
         }
       }}
     >
@@ -50,7 +52,8 @@ export function OnlineCheat({
       <div className="online-cheat-entry">
         <input
           id="online-cheat-code"
-          placeholder="FLY / NORMAL"
+          type="password"
+          placeholder="Nhập mã"
           value={code}
           maxLength={32}
           autoComplete="off"
@@ -63,7 +66,9 @@ export function OnlineCheat({
         </button>
       </div>
       <p role="status">
-        {enabled ? 'Đang bay · WASD / ↑↓←→' : 'FLY: bay · NORMAL: tắt'}
+        {enabled
+          ? 'Đang bay · WASD / ↑↓←→ · Nhập lại mã để tắt'
+          : 'Nhập mã để kích hoạt.'}
       </p>
       {error && <p role="alert">{error}</p>}
     </form>

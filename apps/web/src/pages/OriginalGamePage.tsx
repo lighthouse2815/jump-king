@@ -26,6 +26,7 @@ type PausePanel =
   | 'graphics'
   | 'audio'
   | 'controls'
+  | 'code'
   | 'achievements'
   | 'exit'
   | 'restart';
@@ -37,6 +38,7 @@ const panelLabels: Record<PausePanel, string> = {
   graphics: 'Graphics',
   audio: 'Audio',
   controls: 'Controls',
+  code: 'Code',
   achievements: 'Achievements',
   exit: 'Save and exit',
   restart: 'Give Up',
@@ -333,6 +335,13 @@ export function OriginalGamePage({
         disabled: !ui.inventory?.length,
       },
       { label: 'Options', action: () => open('options') },
+      ...(mode !== 'solo'
+        ? [{
+            label: 'Code',
+            action: () => open('code'),
+            disabled: ui.status !== 'PLAYING' || !ui.roomId,
+          }]
+        : []),
       {
         label: mode === 'solo' ? 'Save & Exit' : 'Leave Room',
         action: () => open('exit'),
@@ -407,6 +416,19 @@ export function OriginalGamePage({
     ],
   };
   const details: Partial<Record<PausePanel, React.ReactNode>> = {
+    code: (
+      <OnlineCheat
+        enabled={ui.freeFlight ?? false}
+        connected={!!ui.roomId}
+        error={onlineCheatError}
+        onSend={(code) => {
+          setOnlineCheatError('');
+          scene.current?.sendCheat(code);
+        }}
+        onFocus={setOnlineInputFocused}
+        onClose={back}
+      />
+    ),
     item: (
       <p>
         {item?.label} · {item?.count}
@@ -612,19 +634,6 @@ export function OriginalGamePage({
                 <p data-testid="player-count">
                   ● {ui.players} người trong phòng
                 </p>
-                {ui.status === 'PLAYING' && !menuVisible && (
-                  <OnlineCheat
-                    key={`${activeCampaign}-${generation}-${roomId}`}
-                    enabled={ui.freeFlight ?? false}
-                    connected={!!ui.roomId}
-                    error={onlineCheatError}
-                    onSend={(code) => {
-                      setOnlineCheatError('');
-                      scene.current?.sendCheat(code);
-                    }}
-                    onFocus={setOnlineInputFocused}
-                  />
-                )}
                 {mode === 'race' && (
                   <div className="race-hud">
                     <p data-testid="race-status">
