@@ -304,6 +304,21 @@ kbd {
 .ending-actions p { margin: 0 0 4px; }
 .online-hud { position: absolute; right: 8px; top: 8px; text-align: right; font-size: 11px; }
 .online-hud p { margin: 0 0 3px; }
+.room-chat { position: absolute; left: 8px; bottom: 8px; width: 220px; font-family: monospace; font-size: 10px; line-height: 14px; pointer-events: auto; }
+.room-chat-trigger { border: 1px solid #808080; padding: 2px 5px; background: #000b; color: #fff; font: inherit; opacity: .4; }
+.room-chat-panel { background: #000c; border: 1px solid #808080; padding: 5px; opacity: 0; visibility: hidden; transition: opacity 1s, visibility 1s; }
+.room-chat.is-recent .room-chat-panel, .room-chat:hover .room-chat-panel, .room-chat:focus-within .room-chat-panel { opacity: 1; visibility: visible; transition: opacity .15s; }
+.room-chat.is-recent .room-chat-trigger, .room-chat:hover .room-chat-trigger, .room-chat:focus-within .room-chat-trigger { opacity: 1; }
+.room-chat-log { max-height: 90px; overflow-y: auto; overflow-wrap: anywhere; scrollbar-width: thin; }
+.room-chat-log p { margin: 0 0 3px; white-space: pre-wrap; }
+.room-chat-log strong { color: #e8d5a0; }
+.room-chat-empty { color: #aaa; }
+.room-chat form { display: flex; gap: 4px; margin-top: 4px; }
+.room-chat input { min-width: 0; width: 100%; padding: 3px; border: 1px solid #808080; background: #111; color: #fff; font: inherit; }
+.room-chat form button { padding: 2px 5px; border: 1px solid #808080; background: #222; color: #fff; font: inherit; }
+.room-chat form button:disabled { opacity: .4; }
+.room-chat-error { margin: 3px 0; color: #ffc896; }
+@media (prefers-reduced-motion: reduce) { .room-chat-panel { transition: none; } }
 .race-countdown { font-size: 32px; line-height: 40px; }
 .race-hud ol { list-style: none; padding: 0; margin: 0; }
 .game-notice { position: absolute; bottom: 8px; left: 16px; right: 16px; font-family: monospace; font-size: 10px; color: #ffc896; margin: 0; }

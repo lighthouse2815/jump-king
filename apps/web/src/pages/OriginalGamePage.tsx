@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Phaser from 'phaser';
 import { OriginalMenu, MenuItem } from '../components/OriginalMenu';
+import { RoomChat } from '../components/RoomChat';
+import { ChatMessage } from '@jump-king/protocol';
 import {
   readStoredValue,
   writeStoredValue,
@@ -91,6 +93,8 @@ export function OriginalGamePage({
   const frame = useRef<HTMLDivElement>(null);
   const overlay = useRef<HTMLDivElement>(null);
   const [ui, setUi] = useState(initialUi);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatError, setChatError] = useState('');
   const [generation, setGeneration] = useState(0);
   const fresh = useRef(false);
   const [muted, setMuted] = useState(
@@ -120,6 +124,8 @@ export function OriginalGamePage({
     if (!mount.current) return;
     let active = true;
     setUi(initialUi);
+    setChatMessages([]);
+    setChatError('');
     const instance = new OriginalScene({
       campaign: activeCampaign,
       fresh: autoplay || fresh.current,
@@ -145,6 +151,12 @@ export function OriginalGamePage({
       },
       onUi: (state) => {
         if (active) setUi(state);
+      },
+      onChat: (messages) => {
+        if (active) setChatMessages(messages);
+      },
+      onChatError: (message) => {
+        if (active) setChatError(message);
       },
     });
     scene.current = instance;
@@ -614,6 +626,24 @@ export function OriginalGamePage({
               <p role="alert" className="game-notice original-frame">
                 {ui.saveError || notice}
               </p>
+            )}
+            {mode !== 'solo' && (
+              <RoomChat
+                key={`${activeCampaign}-${generation}-${roomId}`}
+                messages={chatMessages}
+                error={chatError}
+                hidden={
+                  menuVisible ||
+                  ui.status === 'LOADING' ||
+                  ui.status === 'CUTSCENE'
+                }
+                connected={!!ui.roomId && ui.status !== 'ERROR'}
+                onSend={(text) => {
+                  setChatError('');
+                  scene.current?.sendChat(text);
+                }}
+                onFocus={(focused) => scene.current?.setChatFocused(focused)}
+              />
             )}
           </div>
         </div>

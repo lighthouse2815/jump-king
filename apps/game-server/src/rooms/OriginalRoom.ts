@@ -7,7 +7,14 @@ import {
   isOriginalFinish,
 } from '@jump-king/maps';
 import { OriginalSimulation, PlayerInput } from '@jump-king/physics';
-import { OriginalPlayerState, OriginalTowerState } from '@jump-king/protocol';
+import {
+  OriginalPlayerState,
+  OriginalTowerState,
+  ChatMessage,
+  CHAT_MAX_LENGTH,
+  CHAT_HISTORY_LIMIT,
+  CHAT_COOLDOWN_MS,
+} from '@jump-king/protocol';
 import { isSnapshotTick } from '../networking/snapshotCadence';
 
 type SequencedInput = PlayerInput & { seq: number };
@@ -28,6 +35,9 @@ export class OriginalRoom extends Room<OriginalTowerState> {
   private latestSequences = new Map<string, number>();
   private receivedAt = new Map<string, number>();
   private simulationTicks = 0;
+  private chatHistory: ChatMessage[] = [];
+  private lastChatAt = new Map<string, number>();
+  private chatSequence = 0;
 
   onCreate(options: { campaign?: string }) {
     if (
@@ -39,6 +49,40 @@ export class OriginalRoom extends Room<OriginalTowerState> {
     this.state.campaign = this.campaign;
     this.state.status = this.race ? 'WAITING' : 'PLAYING';
     this.setMetadata({ campaign: this.campaign });
+    this.onMessage('chatHistory', (client) => {
+      if (this.state.players.has(client.sessionId))
+        client.send('chatHistory', this.chatHistory);
+    });
+    this.onMessage('chat', (client, value: unknown) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player || typeof value !== 'string') return;
+      const text = value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+      if (!text) return;
+      if (text.length > CHAT_MAX_LENGTH) {
+        client.send('chatError', `Tin nhắn tối đa ${CHAT_MAX_LENGTH} ký tự.`);
+        return;
+      }
+      const sentAt = Date.now();
+      if (
+        sentAt - (this.lastChatAt.get(client.sessionId) ?? -Infinity) <
+        CHAT_COOLDOWN_MS
+      ) {
+        client.send('chatError', 'Hãy chờ 1 giây trước khi gửi tin tiếp.');
+        return;
+      }
+      this.lastChatAt.set(client.sessionId, sentAt);
+      const message: ChatMessage = {
+        id: ++this.chatSequence,
+        sessionId: client.sessionId,
+        nickname: player.nickname,
+        text,
+        sentAt,
+      };
+      this.chatHistory.push(message);
+      if (this.chatHistory.length > CHAT_HISTORY_LIMIT)
+        this.chatHistory.shift();
+      this.broadcast('chat', message);
+    });
     this.onMessage('input', (client, input: unknown) => {
       if (!input || typeof input !== 'object') return;
       const value = input as SequencedInput;
@@ -196,6 +240,7 @@ export class OriginalRoom extends Room<OriginalTowerState> {
     this.lastInputs.delete(client.sessionId);
     this.latestSequences.delete(client.sessionId);
     this.receivedAt.delete(client.sessionId);
+    this.lastChatAt.delete(client.sessionId);
   }
 }
 

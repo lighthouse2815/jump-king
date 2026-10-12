@@ -1,5 +1,6 @@
 import { Schema, type, MapSchema } from "@colyseus/schema";
 export * from './original';
+export * from './chat';
 
 export class PlayerState extends Schema {
   @type("string") id: string = "";

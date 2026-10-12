@@ -6,6 +6,8 @@ Chơi đơn có lưu/tiếp tục trong trình duyệt, tạm dừng, điều kh
 
 Community Tower và Race Arena chạy Colyseus với dự đoán và đối chiếu trạng thái phía client. Server kiểm tra quyền sở hữu khi trang bị, tự xử lý nhặt vật phẩm và giao dịch. Chơi đơn giữ kho đồ qua các chiến dịch và lần chơi mới; phòng online có kho đồ riêng trong phiên chơi.
 
+Chat trong phòng hiện ở góc dưới trái khi có tin mới, tự mờ sau 6 giây và hiện lại khi rê chuột vào hoặc chạm nút **Chat**. Nhấn **Enter** để nhập/gửi, **Escape** để trở lại điều khiển nhân vật. Khi nhập chat, phím điều khiển nhân vật được tắt; phòng vẫn tiếp tục chạy. Mỗi tin tối đa 200 ký tự, cách nhau ít nhất 1 giây. Server giữ 50 tin gần nhất trong bộ nhớ của từng phòng để người mới vào xem lại; lịch sử mất khi phòng đóng hoặc server khởi động lại, không ghi database. Cần cập nhật cả frontend và backend để dùng chat.
+
 Nhân vật online khác dùng cùng hoạt họa đi bộ, tích lực, nhảy, rơi và va chạm với nhân vật của mình.
 Tiếng nhảy, tiếp đất, ngã và va chạm của người khác theo sự kiện từ server, chỉ nghe khi cùng màn,
 nhỏ hơn tiếng của mình và tuân theo lựa chọn tắt âm thanh. Chọn tiếng nước/tuyết/băng theo nền của

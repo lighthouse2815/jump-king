@@ -19,7 +19,11 @@ import {
   evaluateOriginalAchievements,
 } from '@jump-king/physics';
 import { ErrorCode, Room } from 'colyseus.js';
-import { OriginalTowerState } from '@jump-king/protocol';
+import {
+  OriginalTowerState,
+  ChatMessage,
+  CHAT_HISTORY_LIMIT,
+} from '@jump-king/protocol';
 import { networkManager } from '../networking/NetworkManager';
 import { readGamepads } from '../utils/gamepads';
 import { originalPlayerFrame } from '../originalPlayerFrame';
@@ -103,6 +107,8 @@ export interface OriginalSceneOptions {
   fresh: boolean;
   muted: boolean;
   onUi: (state: OriginalUi) => void;
+  onChat?: (messages: ChatMessage[]) => void;
+  onChatError?: (message: string) => void;
   mode?: 'solo' | 'community' | 'race';
   roomId?: string;
   intro?: boolean;
@@ -157,6 +163,8 @@ export class OriginalScene extends Phaser.Scene {
   private gamepadPause = false;
   private progress = 0;
   private room: Room<OriginalTowerState> | null = null;
+  private chatMessages: ChatMessage[] = [];
+  private chatFocused = false;
   private profile = readProgress();
   private tour?: OriginalAutoplayTour;
   private alternateTourEnding = false;
@@ -475,6 +483,22 @@ export class OriginalScene extends Phaser.Scene {
     }
     this.room = room;
     this.appliedSnapshots.clear();
+    room.onMessage('chatHistory', (messages: ChatMessage[]) => {
+      if (this.disposed) return;
+      this.chatMessages = messages.slice(-CHAT_HISTORY_LIMIT);
+      this.options.onChat?.(this.chatMessages);
+    });
+    room.onMessage('chat', (message: ChatMessage) => {
+      if (this.disposed) return;
+      this.chatMessages = [...this.chatMessages, message].slice(
+        -CHAT_HISTORY_LIMIT,
+      );
+      this.options.onChat?.(this.chatMessages);
+    });
+    room.onMessage('chatError', (message: string) => {
+      if (!this.disposed) this.options.onChatError?.(message);
+    });
+    room.send('chatHistory');
     room.onMessage(
       'playerEffects',
       (message: {
@@ -572,6 +596,20 @@ export class OriginalScene extends Phaser.Scene {
       'ready',
       !this.room.state.players.get(this.room.sessionId)?.ready,
     );
+  }
+
+  sendChat(text: string) {
+    this.room?.send('chat', text);
+  }
+
+  setChatFocused(focused: boolean) {
+    this.chatFocused = focused;
+    this.touch = { left: false, right: false, jump: false };
+    this.input.keyboard?.resetKeys();
+    if (this.input.keyboard) {
+      this.input.keyboard.enabled = !this.paused && !focused;
+      this.input.keyboard.manager.enabled = !this.paused && !focused;
+    }
   }
 
   private loadKeys(textures: string[], sounds: string[] = []) {
@@ -920,7 +958,7 @@ export class OriginalScene extends Phaser.Scene {
   update(_time: number, delta: number) {
     if (!this.ready || this.disposed || this.completed) return;
     const pad = readGamepads().find((pad) => pad?.connected);
-    const padPause = !!pad?.buttons[9]?.pressed;
+    const padPause = !this.chatFocused && !!pad?.buttons[9]?.pressed;
     if (padPause && !this.gamepadPause) {
       this.setPaused(!this.paused);
       this.gamepadPause = true;
@@ -961,7 +999,9 @@ export class OriginalScene extends Phaser.Scene {
       }
       const input =
         tourInput ||
-        (this.canMove ? rawInput : { left: false, right: false, jump: false });
+        (this.canMove && !this.chatFocused
+          ? rawInput
+          : { left: false, right: false, jump: false });
       if (this.room) {
         const sequenced = { ...input, seq: this.sequence++ };
         this.pending.push(sequenced);
@@ -1323,9 +1363,9 @@ export class OriginalScene extends Phaser.Scene {
     this.touch = { left: false, right: false, jump: false };
     this.input.keyboard?.resetKeys();
     if (this.input.keyboard) {
-      this.input.keyboard.enabled = !paused;
+      this.input.keyboard.enabled = !paused && !this.chatFocused;
       // DOM menus own keyboard events while the game is paused.
-      this.input.keyboard.manager.enabled = !paused;
+      this.input.keyboard.manager.enabled = !paused && !this.chatFocused;
     }
     if (paused && this.room)
       this.room.send('input', {
