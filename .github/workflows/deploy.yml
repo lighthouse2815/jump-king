@@ -39,7 +39,7 @@ jobs:
       - run: pnpm build
       - run: pnpm test
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm exec playwright test e2e/chat.spec.ts e2e/chat-controls.spec.ts e2e/cheat.spec.ts e2e/ending-ui.spec.ts e2e/cutscenes.spec.ts --reporter=line
+      - run: pnpm exec playwright test e2e/chat.spec.ts e2e/chat-controls.spec.ts e2e/cheat.spec.ts e2e/ending-ui.spec.ts e2e/cutscenes.spec.ts e2e/appearance.spec.ts --reporter=line
       - run: pnpm build:cloudflare
       - name: Package backend
         env:

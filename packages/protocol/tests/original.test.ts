@@ -28,3 +28,23 @@ it('preserves encoding of the existing multiplayer protocol', () => {
   expect(client.players.get('legacy-session')?.x).toBe(400);
   expect(client.players.get('legacy-session')?.y).toBe(500);
 });
+
+it('synchronizes cosmetic appearance separately from gameplay snapshots', () => {
+  const server = new OriginalTowerState();
+  const player = new OriginalPlayerState();
+  player.snapshot = '{"adventure":{"inventory":{},"equipped":[]}}';
+  player.cosmeticHat = 'Cap';
+  player.colorHue = 123.5;
+  server.players.set('costumed-player', player);
+  const client = new OriginalTowerState();
+  client.decode(server.encodeAll());
+  server.discardAllChanges();
+  expect(client.players.get('costumed-player')?.cosmeticHat).toBe('Cap');
+  expect(client.players.get('costumed-player')?.colorHue).toBe(123.5);
+  player.snapshot = '{"x":250,"adventure":{"inventory":{},"equipped":[]}}';
+  client.decode(server.encode());
+  expect(client.players.get('costumed-player')?.cosmeticHat).toBe('Cap');
+  expect(client.players.get('costumed-player')?.colorHue).toBe(123.5);
+  expect(JSON.parse(client.players.get('costumed-player')!.snapshot).adventure)
+    .toEqual({ inventory: {}, equipped: [] });
+});

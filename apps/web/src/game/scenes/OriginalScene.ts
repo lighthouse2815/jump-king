@@ -182,6 +182,7 @@ export class OriginalScene extends Phaser.Scene {
   private cutscenes?: OriginalCutscenes;
   private activeCutscene?: 'intro' | 'ending';
   private peers = new Map<string, Phaser.GameObjects.Sprite>();
+  private onlineHat = '';
   private appliedSnapshots = new Map<string, string>();
   private sequence = 0;
   private pending: (PlayerInput & { seq: number })[] = [];
@@ -533,11 +534,17 @@ export class OriginalScene extends Phaser.Scene {
     room.onError((_code, message) =>
       this.fail(message || 'Lỗi kết nối tới server.'),
     );
+    const appearanceColor = (hue: number | undefined) =>
+      typeof hue === 'number' && Number.isFinite(hue)
+        ? Phaser.Display.Color.HSLToColor(hue / 360, 0.85, 0.78).color
+        : undefined;
     const reconcile = () => {
       if (this.disposed) return;
       this.canMove = !race || room.state.status === 'RUNNING';
       const player = room.state.players.get(room.sessionId);
       if (player?.snapshot) {
+        this.onlineHat = player.cosmeticHat || '';
+        this.player.setTint(appearanceColor(player.colorHue) ?? 0xffffff);
         this.pending = this.pending.filter(
           (input) => input.seq > player.lastProcessedInputSeq,
         );
@@ -575,9 +582,12 @@ export class OriginalScene extends Phaser.Scene {
         const state: OriginalState = JSON.parse(peer.snapshot);
         sprite
           .setPosition(Math.trunc(state.x) + 9, Math.trunc(state.y) + 26)
+          .setTint(appearanceColor(peer.colorHue) ?? 0xb5bfa0)
           .setFlipX(state.direction < 0);
         sprite.setFrame(originalPlayerFrame(state));
-        this.effects?.dress(id, sprite, state.adventure?.equipped || []);
+        this.effects?.dress(
+          id, sprite, state.adventure?.equipped || [], peer.cosmeticHat,
+        );
       }
       for (const [id, sprite] of this.peers)
         if (!room.state.players.has(id)) {
@@ -960,7 +970,9 @@ export class OriginalScene extends Phaser.Scene {
       )
       .setFrame(frame)
       .setFlipX(sim.direction === -1);
-    this.effects?.dress('self', this.player, sim.adventure?.equipped || []);
+    this.effects?.dress(
+      'self', this.player, sim.adventure?.equipped || [], this.onlineHat,
+    );
     if (sim.adventure)
       this.effects?.sync(sim.adventure, sim.screen, this.worldClock);
   }

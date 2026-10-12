@@ -8,6 +8,8 @@ export class OriginalPlayerState extends Schema {
   @type('boolean') finished = false;
   @type('number') finishTime = 0;
   @type('string') finishEquipment = '[]';
+  @type('string') cosmeticHat = '';
+  @type('number') colorHue = 0;
 }
 
 export class OriginalTowerState extends Schema {

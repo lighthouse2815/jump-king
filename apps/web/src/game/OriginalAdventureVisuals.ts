@@ -132,6 +132,7 @@ export class OriginalAdventureVisuals {
     id: string,
     player: Phaser.GameObjects.Sprite,
     equipped: readonly string[],
+    cosmeticHat = '',
   ) {
     let costume = this.costumes.get(id);
     if (!costume) {
@@ -139,10 +140,14 @@ export class OriginalAdventureVisuals {
       this.costumes.set(id, costume);
     }
     const skins = ORIGINAL_ADVENTURE.skins
-      .filter((skin) => equipped.includes(skin.item))
+      .filter((skin) =>
+        cosmeticHat && skin.layer === 'Hat'
+          ? skin.item === cosmeticHat
+          : equipped.includes(skin.item),
+      )
       .sort((a, b) => layers.indexOf(a.layer) - layers.indexOf(b.layer));
     for (const [item, sprite] of costume)
-      if (!equipped.includes(item)) {
+      if (!skins.some((skin) => skin.item === item)) {
         sprite.destroy();
         costume.delete(item);
       }
@@ -160,6 +165,7 @@ export class OriginalAdventureVisuals {
         .setFlipX(player.flipX)
         .setDepth(player.depth + (index + 1) / 10)
         .setVisible(player.visible)
+        .setTint(player.tintTopLeft)
         .setAlpha(player.alpha);
     }
   }
