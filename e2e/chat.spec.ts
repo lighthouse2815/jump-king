@@ -30,6 +30,7 @@ for (const mode of ['community', 'race']) {
       isMobile: browser.browserType().name() !== 'firefox',
       hasTouch: true,
     });
+    let communityRoom: any;
     try {
       const first = await actor.newPage();
       const second = await observer.newPage();
@@ -42,11 +43,38 @@ for (const mode of ['community', 'race']) {
         await playing(first);
         await second.goto(new URL(first.url()).pathname);
       } else {
+        const client = new Client(
+          process.env.E2E_SERVER_URL || 'ws://127.0.0.1:2567',
+        );
+        communityRoom = await client.create('original_tower', {
+          campaign: 'original',
+        });
+        communityRoom.onMessage('*', () => {});
+        for (const context of [actor, observer, newcomer]) {
+          await context.route(
+            '**/matchmake/joinOrCreate/original_tower',
+            (route) =>
+              route.continue({
+                url: route
+                  .request()
+                  .url()
+                  .replace(
+                    '/joinOrCreate/original_tower',
+                    `/joinById/${communityRoom.roomId}`,
+                  ),
+              }),
+          );
+        }
         await first.goto('/community');
         await playing(first);
         await second.goto('/community');
       }
       await playing(second);
+      if (communityRoom) await communityRoom.leave();
+      await expect(second.getByTestId('game-state')).toHaveAttribute(
+        'data-room-id',
+        (await first.getByTestId('game-state').getAttribute('data-room-id'))!,
+      );
       await expect(second.getByTestId('player-count')).toHaveText(
         '● 2 người trong phòng',
       );
@@ -116,6 +144,7 @@ for (const mode of ['community', 'race']) {
       ).toHaveCount(0);
       expect(errors).toEqual([]);
     } finally {
+      if (communityRoom?.connection.isOpen) await communityRoom.leave();
       await actor.close();
       await observer.close();
       await newcomer.close();
