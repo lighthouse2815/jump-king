@@ -1,10 +1,11 @@
-import { exitGame } from './helpers/gameMenu';
+import { exitGame, setNickname } from './helpers/gameMenu';
 import { test, expect, Page } from '@playwright/test';
 import { OriginalSimulation } from '../packages/physics/src';
 import { ORIGINAL_SCREENS } from '../packages/maps/src';
 
 async function openGame(page: Page, path = '/play') {
   await page.goto(path);
+  if (path === '/community' || path.startsWith('/race/')) await setNickname(page);
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'PLAYING',
@@ -340,6 +341,7 @@ test('a race starts only when both players are ready and accepts actual jumps', 
     for (const page of [p1, p2])
       page.on('pageerror', (error) => errors.push(error.message));
     await p1.goto('/race');
+    await setNickname(p1);
     await p1.getByRole('button', { name: 'Create New Race' }).click();
     await p1.waitForURL(/\/race\/.+/);
     await expect(p1.getByTestId('game-state')).toHaveAttribute(

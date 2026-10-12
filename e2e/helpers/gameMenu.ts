@@ -1,5 +1,10 @@
 import { expect, Page } from '@playwright/test';
 
+export async function setNickname(page: Page, nickname = 'Người chơi thử') {
+  await page.getByRole('textbox', { name: 'Biệt danh', exact: true }).fill(nickname);
+  await page.getByRole('button', { name: 'Vào phòng', exact: true }).click();
+}
+
 export async function pauseGame(page: Page) {
   if (
     (await page

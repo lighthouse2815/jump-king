@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { networkManager } from '../game/networking/NetworkManager';
+import { NicknameForm } from '../components/NicknameForm';
 
 export const RaceLobbyPage = () => {
   const navigate = useNavigate();
   const [roomCode, setRoomCode] = useState('');
   const [error, setError] = useState('');
   const [connecting, setConnecting] = useState(false);
+  const [nickname, setNickname] = useState('');
 
   const handleCreate = async () => {
     setConnecting(true);
     setError('');
     try {
-      const id = await networkManager.createOriginalRaceRoom();
-      navigate(`/race/${id}`);
+      const id = await networkManager.createOriginalRaceRoom(nickname);
+      navigate(`/race/${id}`, { state: { nickname } });
     } catch {
       setError(
         'Không kết nối được server. Hãy kiểm tra server đang chạy rồi thử lại.'
@@ -25,9 +27,12 @@ export const RaceLobbyPage = () => {
 
   const handleJoin = () => {
     if (/^[a-zA-Z0-9_-]+$/.test(roomCode.trim())) {
-      navigate(`/race/${roomCode.trim()}`);
+      navigate(`/race/${roomCode.trim()}`, { state: { nickname } });
     }
   };
+
+  if (!nickname)
+    return <NicknameForm onConfirm={setNickname} />;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white font-mono">

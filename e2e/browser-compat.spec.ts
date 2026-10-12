@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { exitGame } from './helpers/gameMenu';
+import { exitGame, setNickname } from './helpers/gameMenu';
 
 test('keyboard gameplay and menus work when gamepad access is denied', async ({
   page,
@@ -110,6 +110,7 @@ for (const restriction of [
     );
     await exitGame(page);
     await page.goto('/race');
+    await setNickname(page);
     await page.getByRole('button', { name: 'Create New Race' }).click();
     await expect(state).toHaveAttribute('data-status', 'PLAYING', {
       timeout: 30000,

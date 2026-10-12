@@ -1,4 +1,4 @@
-import { exitGame } from './helpers/gameMenu';
+import { exitGame, setNickname } from './helpers/gameMenu';
 import { test, expect, Page } from '@playwright/test';
 import { OriginalSimulation } from '../packages/physics/src';
 import {
@@ -377,6 +377,7 @@ test('Play Online enters the existing community and race modes', async ({
     .getByRole('button', { name: 'Community Tower', exact: true })
     .click();
   await expect(page).toHaveURL(/\/community$/);
+  await setNickname(page);
   await expect(page.getByTestId('game-state')).toHaveAttribute(
     'data-status',
     'PLAYING',
@@ -388,6 +389,7 @@ test('Play Online enters the existing community and race modes', async ({
     .getByRole('button', { name: 'Race Arena', exact: true })
     .click();
   await expect(page).toHaveURL(/\/race$/);
+  await setNickname(page);
   await expect(
     page.getByRole('button', { name: 'Create New Race' }),
   ).toBeVisible();

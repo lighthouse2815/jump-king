@@ -14,6 +14,7 @@ import {
   CHAT_MAX_LENGTH,
   CHAT_HISTORY_LIMIT,
   CHAT_COOLDOWN_MS,
+  NICKNAME_MAX_LENGTH,
 } from '@jump-king/protocol';
 import { isSnapshotTick } from '../networking/snapshotCadence';
 
@@ -196,8 +197,12 @@ export class OriginalRoom extends Room<OriginalTowerState> {
     const player = new OriginalPlayerState();
     player.nickname =
       typeof options.nickname === 'string'
-        ? options.nickname.trim().slice(0, 24) || 'Player'
-        : 'Player';
+        ? options.nickname
+            .replace(/[\u0000-\u001f\u007f]/g, ' ')
+            .trim()
+            .slice(0, NICKNAME_MAX_LENGTH)
+        : '';
+    if (!player.nickname) player.nickname = `Khách ${client.sessionId}`;
     player.snapshot = JSON.stringify(simulation.getState());
     this.simulations.set(client.sessionId, simulation);
     this.queues.set(client.sessionId, []);

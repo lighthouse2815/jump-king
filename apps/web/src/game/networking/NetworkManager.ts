@@ -44,11 +44,11 @@ export class NetworkManager {
     return userId;
   }
 
-  async createOriginalRaceRoom(campaign = 'original') {
+  async createOriginalRaceRoom(nickname: string, campaign = 'original') {
     if (this.originalRoom) await this.originalRoom.leave();
     this.originalRoom = await this.client.create<OriginalTowerState>(
       'original_race',
-      { campaign, nickname: 'Host', userId: this.getUserId() }
+      { campaign, nickname, userId: this.getUserId() }
     );
     return this.originalRoom.roomId;
   }

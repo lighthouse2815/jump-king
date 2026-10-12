@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { setNickname } from './helpers/gameMenu';
 
 test.skip(
   !!process.env.E2E_BASE_URL &&
@@ -86,11 +87,13 @@ for (const mode of ['community', 'race']) {
         await actor
           .getByRole('button', { name: 'Race Arena', exact: true })
           .click();
+        await setNickname(actor);
         await actor.getByRole('button', { name: 'Create New Race' }).click();
         await playing(actor);
         await observer
           .getByRole('button', { name: 'Race Arena', exact: true })
           .click();
+        await setNickname(observer);
         await observer
           .getByPlaceholder('Room Code')
           .fill(new URL(actor.url()).pathname.split('/').pop()!);
@@ -101,10 +104,12 @@ for (const mode of ['community', 'race']) {
         await actor
           .getByRole('button', { name: 'Community Tower', exact: true })
           .click();
+        await setNickname(actor);
         await playing(actor);
         await observer
           .getByRole('button', { name: 'Community Tower', exact: true })
           .click();
+        await setNickname(observer);
       }
       await playing(observer);
       await observer.locator('canvas').click();

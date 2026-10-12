@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { createRequire } from 'node:module';
-import { exitGame } from './helpers/gameMenu';
+import { exitGame, setNickname } from './helpers/gameMenu';
 
 const requireWeb = createRequire(`${process.cwd()}/apps/web/package.json`);
 // Colyseus 0.15 needs the Node ws constructor that supports its headers option.
@@ -17,6 +17,32 @@ async function playing(page: Page) {
     { timeout: 30000 },
   );
 }
+
+test('online rooms require a nickname and remember it for the next visit', async ({ page }) => {
+  const joins: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/matchmake/')) joins.push(request.url());
+  });
+  await page.goto('/community');
+  const name = page.getByRole('textbox', { name: 'Biệt danh', exact: true });
+  const enter = page.getByRole('button', { name: 'Vào phòng', exact: true });
+  await expect(enter).toBeDisabled();
+  await name.fill('   ');
+  await expect(enter).toBeDisabled();
+  await expect(page.locator('canvas')).toHaveCount(0);
+  expect(joins).toEqual([]);
+  await setNickname(page, '  Nhà leo núi  ');
+  await playing(page);
+  await page.keyboard.press('Enter');
+  await page.getByRole('textbox', { name: 'Nhập tin nhắn' }).fill('Tên của tôi');
+  await page.getByRole('button', { name: 'Gửi', exact: true }).click();
+  await expect(page.getByRole('log')).toContainText('Nhà leo núi: Tên của tôi');
+  await page.reload();
+  await expect(name).toHaveValue('Nhà leo núi');
+  await expect(name).toHaveAttribute('maxlength', '24');
+  await setNickname(page, 'Biệt danh mới');
+  await playing(page);
+});
 
 for (const mode of ['community', 'race']) {
   test(`${mode} chat broadcasts, fades, restores on hover and keeps typing out of gameplay`, async ({
@@ -39,9 +65,11 @@ for (const mode of ['community', 'race']) {
         page.on('pageerror', (error) => errors.push(error.message));
       if (mode === 'race') {
         await first.goto('/race');
+        await setNickname(first, 'Vua núi');
         await first.getByRole('button', { name: 'Create New Race' }).click();
         await playing(first);
         await second.goto(new URL(first.url()).pathname);
+        await setNickname(second, 'Bạn đồng hành');
       } else {
         const client = new Client(
           process.env.E2E_SERVER_URL || 'ws://127.0.0.1:2567',
@@ -66,8 +94,10 @@ for (const mode of ['community', 'race']) {
           );
         }
         await first.goto('/community');
+        await setNickname(first, 'Vua núi');
         await playing(first);
         await second.goto('/community');
+        await setNickname(second, 'Bạn đồng hành');
       }
       await playing(second);
       if (communityRoom) await communityRoom.leave();
@@ -98,6 +128,7 @@ for (const mode of ['community', 'race']) {
       await input.press('Enter');
       const log = second.getByRole('log');
       await expect(log).toContainText('Chào cả phòng! a w d <b>Xin chào</b>');
+      await expect(log.locator('strong').first()).toHaveText('Vua núi:');
       await expect(log.locator('b')).toHaveCount(0);
       await expect(panel).toHaveCSS('opacity', '1');
       await expect(input).toBeFocused();
@@ -107,6 +138,7 @@ for (const mode of ['community', 'race']) {
 
       const third = await newcomer.newPage();
       await third.goto(new URL(first.url()).pathname);
+      await setNickname(third, 'Vua điện thoại');
       await playing(third);
       await expect(third.getByRole('log')).toContainText('Chào cả phòng!');
       await third.getByRole('button', { name: 'Chat · Enter' }).tap();
@@ -118,6 +150,8 @@ for (const mode of ['community', 'race']) {
       await third.screenshot({
         path: testInfo.outputPath('room-chat-mobile.png'),
       });
+      await third.goto('/');
+      await second.bringToFront();
       await expect(panel).toHaveCSS('opacity', '0', { timeout: 10000 });
       await second.getByRole('button', { name: 'Chat · Enter' }).hover();
       await expect(panel).toHaveCSS('opacity', '1');
@@ -142,6 +176,8 @@ for (const mode of ['community', 'race']) {
       await expect(
         first.getByRole('region', { name: 'Chat trong phòng' }),
       ).toHaveCount(0);
+      await first.goto('/');
+      await second.goto('/');
       expect(errors).toEqual([]);
     } finally {
       if (communityRoom?.connection.isOpen) await communityRoom.leave();
@@ -203,7 +239,7 @@ test('server validates chat, bounds room history and discards it when a room clo
 
     for (let i = 0; i < 5; i++) {
       const peer = await client.joinById(room.roomId, {
-        nickname: `Peer ${i}`,
+        nickname: i === 0 ? `  Peer\n${'x'.repeat(30)}  ` : `Peer ${i}`,
       });
       peer.onMessage('chat', () => {});
       peer.onMessage('chatError', (error: string) => errors.push(error));
@@ -211,6 +247,12 @@ test('server validates chat, bounds room history and discards it when a room clo
     }
     const peers = rooms.filter((peer) => peer !== separate && peer !== room);
     await expect.poll(() => room.state.players.size).toBe(6);
+    expect(room.state.players.get(peers[0].sessionId).nickname).toBe(
+      `Peer ${'x'.repeat(19)}`,
+    );
+    expect(separate.state.players.get(separate.sessionId).nickname).toBe(
+      `Khách ${separate.sessionId}`,
+    );
     for (let round = 0; round < 11; round++) {
       for (const peer of peers) peer.send('chat', `Round ${round}`);
       await expect

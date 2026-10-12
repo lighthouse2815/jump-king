@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { pauseGame, openDeveloper } from './helpers/gameMenu';
+import { pauseGame, openDeveloper, setNickname } from './helpers/gameMenu';
 
 test('retry remains usable after the only player leaves a failed community', async ({
   page,
@@ -8,6 +8,7 @@ test('retry remains usable after the only player leaves a failed community', asy
   const asset = '**/original/screens/midground/2.png';
   await page.route(asset, (route) => route.abort());
   await page.goto('/community');
+  await setNickname(page);
   const game = page.getByTestId('game-state');
   await expect(game).toHaveAttribute('data-status', 'ERROR', {
     timeout: 30000,
@@ -32,6 +33,7 @@ test('a failed prefetch stays visible during room updates and retry restores pla
   const asset = '**/original/screens/midground/2.png';
   await page.route(asset, (route) => route.abort());
   await page.goto('/community');
+  await setNickname(page);
   const game = page.getByTestId('game-state');
   await expect(game).toHaveAttribute('data-status', 'ERROR', {
     timeout: 30000,
@@ -44,6 +46,7 @@ test('a failed prefetch stays visible during room updates and retry restores pla
   try {
     const other = await peer.newPage();
     await other.goto('/community');
+    await setNickname(other);
     await expect(other.getByTestId('game-state')).toHaveAttribute(
       'data-status',
       'PLAYING',
@@ -83,6 +86,7 @@ test('a blocked connection shows an error and retry connects to the real server'
     await route.fulfill({ response });
   });
   await page.goto('/community');
+  await setNickname(page);
   const game = page.getByTestId('game-state');
   await expect(game).toHaveAttribute('data-status', 'ERROR', {
     timeout: 30000,

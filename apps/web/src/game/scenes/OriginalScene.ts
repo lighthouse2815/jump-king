@@ -104,6 +104,7 @@ export interface AutoplayResult {
   endings: number;
 }
 export interface OriginalSceneOptions {
+  nickname?: string;
   campaign: CampaignId;
   fresh: boolean;
   muted: boolean;
@@ -458,13 +459,13 @@ export class OriginalScene extends Phaser.Scene {
     } else if (race)
       room = await manager.client.joinById<OriginalTowerState>(
         this.options.roomId!,
-        { nickname: 'Challenger' },
+        { nickname: this.options.nickname },
       );
     else if (this.options.roomId) {
       try {
         room = await manager.client.joinById<OriginalTowerState>(
           this.options.roomId,
-          { nickname: 'Player' },
+          { nickname: this.options.nickname },
         );
       } catch (error) {
         if (
@@ -477,7 +478,7 @@ export class OriginalScene extends Phaser.Scene {
     if (!room)
       room = await manager.client.joinOrCreate<OriginalTowerState>(
         'original_tower',
-        { campaign: this.options.campaign, nickname: 'Player' },
+        { campaign: this.options.campaign, nickname: this.options.nickname },
       );
     if (this.disposed) {
       await room.leave();

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Phaser from 'phaser';
 import { OriginalMenu, MenuItem } from '../components/OriginalMenu';
 import { RoomChat } from '../components/RoomChat';
 import { OnlineCheat } from '../components/OnlineCheat';
+import { NicknameForm } from '../components/NicknameForm';
 import { ChatMessage } from '@jump-king/protocol';
 import {
   readStoredValue,
@@ -76,6 +77,7 @@ export function OriginalGamePage({
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const id = params.get('campaign') || 'original';
   const campaign: CampaignId = Object.prototype.hasOwnProperty.call(
     CAMPAIGNS,
@@ -100,6 +102,11 @@ export function OriginalGamePage({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatError, setChatError] = useState('');
   const [onlineCheatError, setOnlineCheatError] = useState('');
+  const [nickname, setNickname] = useState(() =>
+    mode === 'race' && typeof location.state?.nickname === 'string'
+      ? location.state.nickname
+      : '',
+  );
   const [generation, setGeneration] = useState(0);
   const fresh = useRef(false);
   const [muted, setMuted] = useState(
@@ -126,7 +133,7 @@ export function OriginalGamePage({
     : campaign;
 
   useEffect(() => {
-    if (!mount.current) return;
+    if (!mount.current || (mode !== 'solo' && !nickname)) return;
     let active = true;
     setUi(initialUi);
     setChatMessages([]);
@@ -137,6 +144,7 @@ export function OriginalGamePage({
       fresh: autoplay || fresh.current,
       muted,
       mode,
+      nickname,
       roomId:
         roomId ||
         (mode === 'community' &&
@@ -195,7 +203,7 @@ export function OriginalGamePage({
     };
     // Sound preferences are applied independently without restarting a run.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCampaign, autoplay, generation, mode, roomId]);
+  }, [activeCampaign, autoplay, generation, mode, roomId, nickname]);
 
   useEffect(() => {
     speed.current = autoplaySpeed;
@@ -281,13 +289,14 @@ export function OriginalGamePage({
       setNotice(storageWarning);
   }, [showTimer]);
   useEffect(() => {
+    if (!frame.current) return;
     const observer = new ResizeObserver(([entry]) => {
       if (overlay.current)
         overlay.current.style.transform = `scale(${entry.contentRect.width / 480})`;
     });
     if (frame.current) observer.observe(frame.current);
     return () => observer.disconnect();
-  }, []);
+  }, [nickname]);
   const fullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -428,6 +437,9 @@ export function OriginalGamePage({
     ),
     restart: <p>Delete this run and start again?</p>,
   };
+
+  if (mode !== 'solo' && !nickname)
+    return <NicknameForm onConfirm={setNickname} />;
 
   return (
     <main className="original-play-page" ref={container}>

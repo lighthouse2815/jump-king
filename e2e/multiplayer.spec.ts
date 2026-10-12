@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setNickname } from './helpers/gameMenu';
 
 test.describe('Jump King Multiplayer', () => {
   test('players can join and see each other', async ({ browser }) => {
@@ -16,10 +17,12 @@ test.describe('Jump King Multiplayer', () => {
 
     // 1. Player 1 joins Community
     await page1.goto('/community');
+    await setNickname(page1);
     await page1.waitForSelector('canvas', { timeout: 10000 });
 
     // 2. Player 2 joins Community
     await page2.goto('/community');
+    await setNickname(page2);
     await page2.waitForSelector('canvas', { timeout: 10000 });
 
     // Wait for connection and initialization
@@ -56,6 +59,7 @@ test.describe('Jump King Multiplayer', () => {
 
     // 1. Player 1 creates race
     await page1.goto('/race');
+    await setNickname(page1);
     await page1.waitForSelector('text=Create New Race');
     await page1.click('text=Create New Race');
 
@@ -66,6 +70,7 @@ test.describe('Jump King Multiplayer', () => {
 
     // 2. Player 2 joins race
     await page2.goto(`/race/${roomId}`);
+    await setNickname(page2);
     await page2.waitForSelector('canvas', { timeout: 10000 });
 
     await page1.waitForSelector('canvas', { timeout: 10000 });
