@@ -72,6 +72,17 @@ pnpm test
 pnpm test:e2e
 ```
 
+Mặc định Playwright chạy Chromium. Để kiểm tra thêm Microsoft Edge thật và Firefox,
+cài các trình duyệt rồi bật bộ test nhiều trình duyệt:
+
+```sh
+pnpm exec playwright install chromium firefox msedge
+E2E_CROSS_BROWSER=1 pnpm exec playwright test e2e/browser-compat.spec.ts e2e/original.spec.ts --grep 'gamepad access|plays without|a race starts'
+```
+
+Edge/Firefox với cấu hình mặc định có thể chạy chơi đơn và Community trên bản công khai.
+Khi trình duyệt chặn API tay cầm, game vẫn nhận bàn phím và cảm ứng.
+
 Kiểm tra multiplayer trực tiếp trên bản công khai, không khởi động server cục bộ:
 
 ```sh

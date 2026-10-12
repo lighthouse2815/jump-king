@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { originalUrl } from '../game/originalAssets';
+import { readGamepads } from '../game/utils/gamepads';
 
 export interface MenuItem {
   label: string;
@@ -102,7 +103,7 @@ export function OriginalMenu({
     let primed = false;
     let repeatedAt = 0;
     const poll = (now: number) => {
-      const pad = Array.from(navigator.getGamepads?.() || []).find(
+      const pad = readGamepads().find(
         (value) => value?.mapping === 'standard',
       );
       const key = pad?.buttons[0]?.pressed

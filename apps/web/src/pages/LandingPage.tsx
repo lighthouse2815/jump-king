@@ -6,6 +6,7 @@ import { readProgress } from '../game/originalProgress';
 import { originalUrl } from '../game/originalAssets';
 import { OriginalMenu, MenuItem } from '../components/OriginalMenu';
 import { multiplayerEnabled } from '../game/networking/NetworkManager';
+import { readGamepads } from '../game/utils/gamepads';
 
 type Panel =
   | 'main'
@@ -158,7 +159,7 @@ export const LandingPage = () => {
     let previous = '';
     let repeatedAt = 0;
     const poll = (now: number) => {
-      const pad = Array.from(navigator.getGamepads?.() || []).find(
+      const pad = readGamepads().find(
         (value) => value?.mapping === 'standard',
       );
       const key =

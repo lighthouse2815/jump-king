@@ -20,6 +20,7 @@ import {
 import { ErrorCode, Room } from 'colyseus.js';
 import { OriginalTowerState } from '@jump-king/protocol';
 import { networkManager } from '../networking/NetworkManager';
+import { readGamepads } from '../utils/gamepads';
 import {
   OriginalManifest,
   OriginalDetails,
@@ -911,7 +912,7 @@ export class OriginalScene extends Phaser.Scene {
 
   update(_time: number, delta: number) {
     if (!this.ready || this.disposed || this.completed) return;
-    const pad = navigator.getGamepads?.().find((pad) => pad?.connected);
+    const pad = readGamepads().find((pad) => pad?.connected);
     const padPause = !!pad?.buttons[9]?.pressed;
     if (padPause && !this.gamepadPause) {
       this.setPaused(!this.paused);

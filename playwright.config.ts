@@ -32,5 +32,17 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    ...(process.env.E2E_CROSS_BROWSER === '1'
+      ? [
+          {
+            name: 'msedge',
+            use: { ...devices['Desktop Edge'], channel: 'msedge' },
+          },
+          {
+            name: 'firefox',
+            use: { ...devices['Desktop Firefox'] },
+          },
+        ]
+      : []),
   ],
 });
