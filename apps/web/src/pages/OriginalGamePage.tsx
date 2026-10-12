@@ -505,12 +505,12 @@ export function OriginalGamePage({
             >
               {ui.location}
             </p>
-            {showTimer && !ui.paused && (
+            {showTimer && !ui.paused && ui.status === 'PLAYING' && (
               <p className="original-timer" data-testid="run-clock">
                 {clock(ui.seconds)}
               </p>
             )}
-            {ui.achievementNotice && (
+            {ui.achievementNotice && ui.status === 'PLAYING' && (
               <div
                 className="achievement-toast original-frame"
                 role="status"
@@ -630,7 +630,7 @@ export function OriginalGamePage({
               </div>
             )}
             {mode !== 'solo' && (
-              <div className="online-hud" hidden={menuVisible}>
+              <div className="online-hud" hidden={menuVisible || ui.status === 'CUTSCENE'}>
                 <p data-testid="player-count">
                   ● {ui.players} người trong phòng
                 </p>

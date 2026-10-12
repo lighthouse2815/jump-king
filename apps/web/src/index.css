@@ -359,5 +359,5 @@ progress::-moz-progress-bar { background: #aaa; }
 .autoplay-panel input, .autoplay-panel select { width: 100%; padding: 8px; border: 1px solid #727b59; border-radius: 3px; background: #151e13; color: #e8d5a0; }
 .autoplay-panel .menu-button { width: 100%; margin-top: 10px; }
 .autoplay-panel li { display: block; line-height: 1.6; }
-.cutscene-skip { position: absolute; z-index: 5; bottom: 12px; right: 12px; width: auto; padding: 8px 12px; font-size: 12px; }
+.cutscene-skip { position: absolute; z-index: 5; top: 12px; right: 12px; width: auto; padding: 8px 12px; font-size: 12px; }
 .achievement-toast { position: absolute; bottom: 16px; right: 16px; max-width: 260px; font-size: 11px; color: #fff; pointer-events: none; }
