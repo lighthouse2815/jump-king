@@ -9,4 +9,5 @@ export interface ChatMessage {
   nickname: string;
   text: string;
   sentAt: number;
+  color?: string;
 }

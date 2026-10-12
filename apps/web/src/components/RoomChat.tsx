@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ChatMessage, CHAT_MAX_LENGTH } from '@jump-king/protocol';
 
 export function RoomChat({
@@ -18,10 +18,21 @@ export function RoomChat({
 }) {
   const [draft, setDraft] = useState('');
   const [recent, setRecent] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const panelId = useId();
   const input = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const log = useRef<HTMLDivElement>(null);
   const lastId = messages[messages.length - 1]?.id;
+  const lastReceivedId = useRef(lastId ?? 0);
+
+  useEffect(() => {
+    const id = lastId ?? 0;
+    const received = id - lastReceivedId.current;
+    if (collapsed && received > 0) setUnread((count) => count + received);
+    lastReceivedId.current = id;
+  }, [lastId, collapsed]);
 
   useEffect(() => {
     if (lastId === undefined && !error) return;
@@ -47,8 +58,7 @@ export function RoomChat({
       )
         return;
       event.preventDefault();
-      trigger.current?.focus();
-      input.current?.focus();
+      trigger.current?.click();
     };
     document.addEventListener('keydown', open);
     return () => document.removeEventListener('keydown', open);
@@ -56,22 +66,47 @@ export function RoomChat({
 
   return (
     <section
-      className={`room-chat${recent ? ' is-recent' : ''}`}
+      className={`room-chat${recent ? ' is-recent' : ''}${unread ? ' has-unread' : ''}`}
       hidden={hidden}
       aria-label="Chat trong phòng"
     >
       <button
         ref={trigger}
         className="room-chat-trigger"
+        aria-expanded={!collapsed}
+        aria-controls={panelId}
         onClick={(event) => {
+          setCollapsed(false);
+          setUnread(0);
           event.currentTarget.focus();
-          input.current?.focus();
+          window.requestAnimationFrame(() => input.current?.focus());
         }}
         disabled={!connected}
       >
-        Chat · Enter
+        {collapsed ? 'Hiện chat · Enter' : 'Chat · Enter'}
+        {!!unread && (
+          <span
+            className="room-chat-unread"
+            role="status"
+            aria-label={`${unread} tin nhắn mới`}
+          />
+        )}
       </button>
-      <div className="room-chat-panel">
+      <div id={panelId} className="room-chat-panel" hidden={collapsed}>
+        <div className="room-chat-actions">
+          <button
+            type="button"
+            onClick={(event) => {
+              input.current?.blur();
+              setCollapsed(true);
+              setUnread(0);
+              setRecent(false);
+              event.currentTarget.blur();
+            }}
+          >
+            Ẩn chat
+          </button>
+        </div>
         <div
           className="room-chat-log"
           ref={log}
@@ -82,7 +117,7 @@ export function RoomChat({
         >
           {messages.length ? (
             messages.map((message) => (
-              <p key={message.id}>
+              <p key={message.id} style={{ color: message.color }}>
                 <strong title={message.sessionId}>{message.nickname}:</strong>{' '}
                 {message.text}
               </p>

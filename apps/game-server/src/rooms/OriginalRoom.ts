@@ -39,6 +39,8 @@ export class OriginalRoom extends Room<OriginalTowerState> {
   private chatHistory: ChatMessage[] = [];
   private lastChatAt = new Map<string, number>();
   private chatSequence = 0;
+  private chatColors = new Map<string, string>();
+  private chatColorSequence = 0;
 
   onCreate(options: { campaign?: string }) {
     if (
@@ -103,6 +105,7 @@ export class OriginalRoom extends Room<OriginalTowerState> {
         nickname: player.nickname,
         text,
         sentAt,
+        color: this.chatColors.get(client.sessionId),
       };
       this.chatHistory.push(message);
       if (this.chatHistory.length > CHAT_HISTORY_LIMIT)
@@ -204,6 +207,10 @@ export class OriginalRoom extends Room<OriginalTowerState> {
             .slice(0, NICKNAME_MAX_LENGTH)
         : '';
     if (!player.nickname) player.nickname = `Khách ${client.sessionId}`;
+    this.chatColors.set(
+      client.sessionId,
+      `hsl(${((this.chatColorSequence++ * 137.508) % 360).toFixed(3)}, 85%, 78%)`,
+    );
     player.snapshot = JSON.stringify(simulation.getState());
     this.simulations.set(client.sessionId, simulation);
     this.queues.set(client.sessionId, []);
@@ -278,6 +285,7 @@ export class OriginalRoom extends Room<OriginalTowerState> {
     this.latestSequences.delete(client.sessionId);
     this.receivedAt.delete(client.sessionId);
     this.lastChatAt.delete(client.sessionId);
+    this.chatColors.delete(client.sessionId);
   }
 }
 
