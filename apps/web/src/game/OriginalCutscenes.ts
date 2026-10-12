@@ -252,6 +252,7 @@ const CREDITS: readonly [string, ...string[]][] = [
   ['Web & Online Development', 'lighthouse2815'],
   [
     'Nexile',
+    'lighthouse2815',
     'Erik Säll',
     'Felix Wahlström',
     'Eric Osana',
@@ -259,12 +260,14 @@ const CREDITS: readonly [string, ...string[]][] = [
   ],
   [
     'In Collaboration With:',
+    'lighthouse2815',
     'Thörnlund & Eklöf Sound',
     'Nils Eklöf',
     'Elias Thörnlund',
   ],
   [
     'Erik Säll',
+    'lighthouse2815',
     'Game Director',
     'Programming',
     'Level Design',
@@ -273,20 +276,22 @@ const CREDITS: readonly [string, ...string[]][] = [
   ],
   [
     'Felix Wahlström',
+    'lighthouse2815',
     'Art Director',
     'Character & Background Design',
     'Animation',
     'Assistant Level Design',
   ],
-  ['Eric Osana', 'Level Design', 'Business Manager'],
+  ['Eric Osana', 'lighthouse2815', 'Level Design', 'Business Manager'],
   [
     'Theo Unland Karlsson',
+    'lighthouse2815',
     'Level Design',
     'Tech/Software Manager',
     'Quality Assurance',
   ],
-  ['Nils Eklöf', 'Music', 'Ambience', 'Sound Effects'],
-  ['Elias Thörnlund', 'Music', 'Ambience', 'Sound Effects'],
+  ['Nils Eklöf', 'lighthouse2815', 'Music', 'Ambience', 'Sound Effects'],
+  ['Elias Thörnlund', 'lighthouse2815', 'Music', 'Ambience', 'Sound Effects'],
   [
     'Special Thanks to:',
     'nvbangg',
@@ -1420,8 +1425,13 @@ export class OriginalCutscenes {
           .setOrigin(0.5)
           .setAlpha(0);
         const lineHeight = heading.height;
+        const headingY = Math.min(
+          255,
+          348 - (people.length + 0.5) * lineHeight - 4,
+        );
+        heading.setY(headingY);
         const lines = people.map((person, i) =>
-          this.text(240, 255 + lineHeight + 4 + i * lineHeight, person)
+          this.text(240, headingY + lineHeight + 4 + i * lineHeight, person)
             .setOrigin(0.5)
             .setAlpha(0),
         );

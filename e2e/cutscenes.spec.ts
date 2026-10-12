@@ -141,19 +141,28 @@ for (const [campaign, equipped, tsuchinokoDone, picture, award] of [
       scene.tweens.timeScale = 30;
       scene.anims.globalTimeScale = 30;
       const credits: string[] = [];
+      const creditPages: Record<string, string[]> = {};
       (window as any).cutsceneTest.credits = credits;
+      (window as any).cutsceneTest.creditPages = creditPages;
+      let frameText: string[] = [];
       const collect = (objects: any[]) => {
         for (const object of objects) {
-          if (
-            typeof object.text === 'string' &&
-            object.alpha > 0 &&
-            !credits.includes(object.text)
-          )
-            credits.push(object.text);
+          if (typeof object.text === 'string' && object.alpha > 0) {
+            frameText.push(object.text);
+            if (!credits.includes(object.text)) credits.push(object.text);
+            if (object.getBounds().bottom > 348)
+              (window as any).cutsceneTest.clippedCredit = object.text;
+          }
           if (object.list) collect(object.list);
         }
       };
-      scene.events.on('postupdate', () => collect(scene.children.list));
+      scene.events.on('postupdate', () => {
+        frameText = [];
+        collect(scene.children.list);
+        const heading = frameText[0];
+        if (heading && frameText.length > (creditPages[heading]?.length || 0))
+          creditPages[heading] = frameText;
+      });
       cutscene.playEnding();
     });
     await expect
@@ -175,6 +184,8 @@ for (const [campaign, equipped, tsuchinokoDone, picture, award] of [
         completed,
         awards,
         credits: (window as any).cutsceneTest.credits,
+        creditPages: (window as any).cutsceneTest.creditPages,
+        clippedCredit: (window as any).cutsceneTest.clippedCredit,
         camera: [scene.cameras.main.scrollX, scene.cameras.main.scrollY],
         ownObjects: scene.children.list.length,
       };
@@ -182,6 +193,23 @@ for (const [campaign, equipped, tsuchinokoDone, picture, award] of [
     expect(result.picture).toBe(picture);
     expect(result.awards).toContain(award);
     expect(result.credits).toContain('lighthouse2815');
+    for (const section of [
+      'WEB & ONLINE DEVELOPMENT',
+      'NEXILE',
+      'IN COLLABORATION WITH:',
+      'ERIK SÄLL',
+      'FELIX WAHLSTRÖM',
+      'ERIC OSANA',
+      'THEO UNLAND KARLSSON',
+      'NILS EKLÖF',
+      'ELIAS THÖRNLUND',
+    ]) {
+      expect(result.creditPages[section]).toContain('lighthouse2815');
+    }
+    expect(result.creditPages['SPECIAL THANKS TO:']).not.toContain(
+      'lighthouse2815',
+    );
+    expect(result.clippedCredit).toBeUndefined();
     expect(result.credits.indexOf('lighthouse2815')).toBeLessThan(
       result.credits.indexOf('NEXILE'),
     );
