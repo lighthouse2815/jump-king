@@ -20,6 +20,7 @@ export const ORIGINAL_PHYSICS = {
   bounce: 0.5,
   iceFriction: 0.1,
   splatTicks: 30,
+  bumpQuietTicks: 12,
 };
 
 export interface OriginalScreen {
@@ -54,6 +55,7 @@ export interface OriginalState {
   falls: number;
   airChargeTicks?: number;
   freeFlight?: boolean;
+  bumpCooldownTicks?: number;
   adventure?: OriginalAdventureState;
 }
 
@@ -95,6 +97,7 @@ export class OriginalSimulation {
   falls = 0;
   freeFlight = false;
   private airChargeTicks = 0;
+  private bumpCooldownTicks = 0;
   readonly adventure?: OriginalAdventure;
 
   constructor(
@@ -344,6 +347,7 @@ export class OriginalSimulation {
     this.body.isGrounded = false;
     this.chargeTicks = 0;
     this.airChargeTicks = 0;
+    this.bumpCooldownTicks = 0;
     this.prevJump = false;
     this.jumpConsumed = false;
     this.directions = [];
@@ -468,7 +472,12 @@ export class OriginalSimulation {
     if (this.jumps > jumps) effects.push('jump');
     if (this.falls > falls) effects.push('splat');
     else if (!grounded && body.isGrounded) effects.push('land');
-    if (bumped) effects.push('bump');
+    // Re-arm only after 200 ms without impacts, including brief gaps while
+    // pressing against a wall. Keep collision and bounce behavior unchanged.
+    if (bumped) {
+      if (this.bumpCooldownTicks === 0) effects.push('bump');
+      this.bumpCooldownTicks = ORIGINAL_PHYSICS.bumpQuietTicks;
+    } else this.bumpCooldownTicks = Math.max(0, this.bumpCooldownTicks - 1);
     return { bumped: !!bumped, adventure, effects };
   }
 
@@ -497,6 +506,7 @@ export class OriginalSimulation {
       falls: this.falls,
       airChargeTicks: this.airChargeTicks,
       freeFlight: this.freeFlight,
+      bumpCooldownTicks: this.bumpCooldownTicks,
       ...(this.adventure ? { adventure: this.adventure.getState() } : {}),
     };
   }
@@ -523,6 +533,7 @@ export class OriginalSimulation {
     this.falls = state.falls;
     this.airChargeTicks = state.airChargeTicks || 0;
     this.freeFlight = state.freeFlight === true;
+    this.bumpCooldownTicks = state.bumpCooldownTicks ?? 0;
     if (state.adventure && this.adventure)
       this.adventure.restore(state.adventure);
   }

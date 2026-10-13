@@ -10,6 +10,26 @@ function grounded() {
   return simulation;
 }
 
+function besideWall(direction: number) {
+  const simulation = new OriginalSimulation(
+    [
+      {
+        tiles: Array.from({ length: 45 }, (_, row) =>
+          Array.from({ length: 60 }, (_, col) =>
+            row >= 41 || col < 10 || col >= 30 ? '#' : ' '
+          ).join('')
+        ),
+        wind: false,
+        teleport: -1,
+      },
+    ],
+    direction > 0 ? 222 : 80,
+    302
+  );
+  simulation.tick(idle);
+  return simulation;
+}
+
 describe('Jump King 1.04 physics', () => {
   it('loads every original 60 × 45 tile screen and lands at the original camp', () => {
     expect(ORIGINAL_SCREENS).toHaveLength(169);
@@ -58,6 +78,75 @@ describe('Jump King 1.04 physics', () => {
     expect(simulation.body.velocity.x).toBe(-1.75);
     expect(simulation.knocked).toBe(true);
     expect(simulation.body.position.x + 18).toBeLessThanOrEqual(472);
+  });
+
+  it.each([-1, 1])(
+    'emits one bump while holding movement into wall %i',
+    (direction) => {
+      const simulation = besideWall(direction);
+      const input = { ...idle, left: direction < 0, right: direction > 0 };
+      const effects: string[] = [];
+      let collisions = 0;
+      for (let i = 0; i < 120; i++) {
+        const event = simulation.tick(input);
+        effects.push(...event.effects);
+        if (event.bumped) collisions++;
+      }
+      expect(collisions).toBeGreaterThan(100);
+      expect(effects).toEqual(['bump']);
+      expect(simulation.body.position.x).toBe(direction > 0 ? 222 : 80);
+    }
+  );
+
+  it.each([-1, 1])(
+    'plays a new bump after walking away from wall %i',
+    (direction) => {
+      const simulation = besideWall(direction);
+      const intoWall = { ...idle, left: direction < 0, right: direction > 0 };
+      for (let i = 0; i < 30; i++) simulation.tick(intoWall);
+      for (let i = 0; i < 20; i++)
+        simulation.tick({ ...idle, left: direction > 0, right: direction < 0 });
+      const effects: string[] = [];
+      for (let i = 0; i < 60; i++)
+        effects.push(...simulation.tick(intoWall).effects);
+      expect(effects).toEqual(['bump']);
+    }
+  );
+
+  it('restores wall sound suppression and replays effects deterministically', () => {
+    const first = besideWall(1);
+    const intoWall = { ...idle, right: true };
+    for (let i = 0; i < 30; i++) first.tick(intoWall);
+    const second = besideWall(1);
+    second.restore(first.getState());
+    const effects: string[] = [];
+    for (let i = 0; i < 90; i++) {
+      const input = i >= 30 && i < 50 ? idle : intoWall;
+      const event = first.tick(input);
+      expect(second.tick(input)).toEqual(event);
+      expect(second.getState()).toEqual(first.getState());
+      effects.push(...event.effects);
+    }
+    expect(effects).toEqual(['bump']);
+  });
+
+  it('suppresses rapid wall taps with brief gaps between impacts', () => {
+    const simulation = besideWall(1);
+    const effects: string[] = [];
+    for (let i = 0; i < 120; i++) {
+      const input = i % 6 < 3 ? { ...idle, right: true } : idle;
+      effects.push(...simulation.tick(input).effects);
+    }
+    expect(effects).toEqual(['bump']);
+  });
+
+  it('accepts old snapshots without wall sound suppression state', () => {
+    const simulation = besideWall(1);
+    const state = simulation.getState();
+    state.vx = ORIGINAL_PHYSICS.walkSpeed;
+    delete state.bumpCooldownTicks;
+    simulation.restore(state);
+    expect(simulation.tick(idle).effects).toEqual(['bump']);
   });
 
   it('emits one jump and landing effect, without replaying sounds on idle ticks', () => {
