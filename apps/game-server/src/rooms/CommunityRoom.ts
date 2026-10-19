@@ -37,15 +37,16 @@ export class CommunityRoom extends Room<GameState> {
         queue = [];
         this.inputQueues.set(client.sessionId, queue);
       }
-      // Bound the queue size to prevent memory leaks / malicious flooding
-      if (queue.length < 60) {
-        queue.push({
-          left: input.left,
-          right: input.right,
-          jump: input.jump,
-          seq: input.seq
-        });
+      // Bound the queue size: Drop oldest to catch up if we get a huge burst
+      if (queue.length > 5) {
+        queue.splice(0, queue.length - 5);
       }
+      queue.push({
+        left: input.left,
+        right: input.right,
+        jump: input.jump,
+        seq: input.seq
+      });
     });
 
     this.setSimulationInterval((deltaTime) => this.update(deltaTime), this.fixedTimeStep);
@@ -98,33 +99,26 @@ export class CommunityRoom extends Room<GameState> {
     this.playerControllers.forEach((controller, sessionId) => {
       const queue = this.inputQueues.get(sessionId) || [];
       const body = this.playerBodies.get(sessionId);
+      const playerState = this.state.players.get(sessionId);
       
+      let input;
       if (queue.length === 0) {
-        // Queue empty due to jitter. Duplicate last input to prevent dropping charge state.
-        const lastInput = this.lastInputs.get(sessionId) || { left: false, right: false, jump: false, seq: 0 };
-        controller.tick(lastInput);
-        if (body) this.physicsWorld.tickBody(body);
+        // Jitter buffer empty: duplicate last input
+        input = this.lastInputs.get(sessionId) || { left: false, right: false, jump: false, seq: 0 };
       } else {
-        // Process all pending inputs for this player
-        while (queue.length > 0) {
-          const input = queue.shift()!;
-          this.lastInputs.set(sessionId, input);
-          controller.tick(input);
-          if (body) {
-            this.physicsWorld.tickBody(body);
-          }
-          // Update the player's last processed seq
-          const playerState = this.state.players.get(sessionId);
-          if (playerState) {
-            playerState.lastProcessedInputSeq = input.seq;
-          }
+        // Shift exactly ONE input per fixed timestep
+        input = queue.shift()!;
+        this.lastInputs.set(sessionId, input);
+        if (playerState) {
+          playerState.lastProcessedInputSeq = input.seq;
         }
       }
-    });
 
-    // We no longer call this.physicsWorld.tick() for all bodies at once,
-    // because we integrated them per-input above. 
-    // If there were NPCs, we would tick them here.
+      controller.tick(input);
+      if (body) {
+        this.physicsWorld.tickBody(body);
+      }
+    });
 
     // Sync state
     this.state.players.forEach((player, sessionId) => {
@@ -133,6 +127,10 @@ export class CommunityRoom extends Room<GameState> {
       if (body && controller) {
         player.x = body.position.x;
         player.y = body.position.y;
+        player.velX = body.velocity.x;
+        player.velY = body.velocity.y;
+        player.isGrounded = body.isGrounded;
+        player.prevJump = controller.prevJump;
         player.chargeTicks = controller.chargeTicks;
         player.direction = controller.direction;
       }
