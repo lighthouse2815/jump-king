@@ -51,6 +51,7 @@ export class RaceRoom extends Room<GameState> {
     });
 
     this.onMessage("ready", (client, isReady: any) => {
+      console.log("Ready received from", client.sessionId, isReady);
       if (typeof isReady !== 'boolean') return;
       if (this.state.status === "WAITING") {
         const player = this.state.players.get(client.sessionId);
@@ -78,6 +79,7 @@ export class RaceRoom extends Room<GameState> {
   }
 
   private startCountdown() {
+    console.log("Starting countdown for room", this.roomId);
     this.state.status = "COUNTDOWN";
     this.state.countdown = 3;
     

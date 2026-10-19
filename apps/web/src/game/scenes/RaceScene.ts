@@ -66,15 +66,13 @@ export class RaceScene extends Phaser.Scene {
       this.uiStateRef.status = 'WAITING';
       this.updateReactUi();
 
-      this.network.room.state.listen('status', (newStatus) => {
-        this.uiStateRef.status = newStatus;
-        this.canMove = newStatus === 'RUNNING';
-        this.updateReactUi();
-      });
-
-      this.network.room.state.listen('countdown', (val) => {
-        this.uiStateRef.countdown = val;
-        this.updateReactUi();
+      this.network.room.onStateChange((state) => {
+        if (this.uiStateRef.status !== state.status || this.uiStateRef.countdown !== state.countdown) {
+          this.uiStateRef.status = state.status;
+          this.uiStateRef.countdown = state.countdown;
+          this.canMove = state.status === 'RUNNING';
+          this.updateReactUi();
+        }
       });
 
       this.network.room.state.players.onAdd((player: PlayerState, sessionId: string) => {
